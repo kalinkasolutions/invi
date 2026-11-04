@@ -12,6 +12,15 @@ const paths = {
   check: 'M5 12.5l4.5 4.5L19 7',
   chevron: 'M6 9l6 6 6-6',
   logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
+  play: 'M7 4.5v15l12-7.5z',
+  pause: 'M8 5v14M16 5v14',
+  volume: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11',
+  muted: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 10l5 5M21 10l-5 5',
+  captions: 'M3 5h18v14H3zM10.5 10a2.5 2.5 0 1 0 0 4M17.5 10a2.5 2.5 0 1 0 0 4',
+  settings: 'M4 7h10M18 7h2M4 17h4M12 17h8M14 5v4M8 15v4',
+  pip: 'M3 5h18v14H3zM12 12h7v5h-7z',
+  fullscreen: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+  'fullscreen-exit': 'M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5',
 } as const;
 
 export type IconName = keyof typeof paths;

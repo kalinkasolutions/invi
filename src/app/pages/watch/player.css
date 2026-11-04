@@ -12,20 +12,10 @@ video {
   background: #000;
 }
 
-.quality {
-  position: absolute;
-  top: .5rem;
-  right: .5rem;
-}
-
-.quality select {
-  padding: .2rem .4rem;
-  border: 0;
-  border-radius: .4rem;
-  background: rgb(0 0 0 / .6);
-  color: #fff;
-  font: inherit;
-  font-size: .8rem;
+:host(:fullscreen) video {
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
 }
 
 .problem {

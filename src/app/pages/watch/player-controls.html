@@ -1,0 +1,88 @@
+<div class="surface" (pointerup)="onSurfaceTap($event)" (dblclick)="fullscreenToggle.emit()"></div>
+
+@if (state().waiting()) {
+  <div class="spinner" role="status" aria-label="Loading"></div>
+} @else if (!state().playing()) {
+  <button class="big-play" aria-label="Play" (click)="state().togglePlay()"><app-icon name="play" /></button>
+}
+
+<div class="bar" (pointerenter)="pointerOnBar.set($event.pointerType === 'mouse')" (pointerleave)="pointerOnBar.set(false)">
+  @if (preview(); as preview) {
+    <div class="preview" [style.left.px]="preview.left">
+      @if (preview.frame; as frame) {
+        <div class="frame"
+             [style.width.px]="frame.width"
+             [style.height.px]="frame.height"
+             [style.background-image]="'url(' + frame.image + ')'"
+             [style.background-position]="-frame.x + 'px ' + -frame.y + 'px'"></div>
+      }
+      <span>{{ preview.time }}</span>
+    </div>
+  }
+
+  <div #timeline class="timeline" role="slider" aria-label="Seek" tabindex="-1"
+       [attr.aria-valuemax]="state().duration()" [attr.aria-valuenow]="state().currentTime()"
+       (pointerdown)="startScrub($event)" (pointermove)="moveOverTimeline($event)" (pointerup)="endScrub($event)"
+       (pointercancel)="cancelScrub()" (pointerleave)="leaveTimeline()">
+    <div class="track">
+      <div class="buffered" [style.width.%]="bufferedPercent()"></div>
+      <div class="played" [style.width.%]="playedPercent()"></div>
+      <div class="handle" [style.left.%]="playedPercent()"></div>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button [attr.aria-label]="state().playing() ? 'Pause' : 'Play'" (click)="state().togglePlay()">
+      <app-icon [name]="state().playing() ? 'pause' : 'play'" />
+    </button>
+    <button [attr.aria-label]="state().muted() ? 'Unmute' : 'Mute'" (click)="state().toggleMute()">
+      <app-icon [name]="state().muted() || state().volume() === 0 ? 'muted' : 'volume'" />
+    </button>
+    <input class="volume" type="range" min="0" max="1" step="0.05" aria-label="Volume"
+           [value]="state().muted() ? 0 : state().volume()" (input)="setVolume($event)" />
+    <span class="time">{{ timeText() }}</span>
+    <span class="spacer"></span>
+    @if (captions().length) {
+      <button aria-label="Captions" [class.on]="caption() >= 0" (click)="toggleMenu('captions')">
+        <app-icon name="captions" />
+      </button>
+    }
+    <button aria-label="Settings" (click)="toggleMenu('settings')"><app-icon name="settings" /></button>
+    @if (pictureInPicture) {
+      <button aria-label="Picture in picture" (click)="togglePictureInPicture()"><app-icon name="pip" /></button>
+    }
+    <button [attr.aria-label]="fullscreen() ? 'Exit full screen' : 'Full screen'" (click)="fullscreenToggle.emit()">
+      <app-icon [name]="fullscreen() ? 'fullscreen-exit' : 'fullscreen'" />
+    </button>
+  </div>
+
+  @if (menu() === 'settings') {
+    <div class="menu" role="menu">
+      <p class="heading">Speed</p>
+      <div class="choices">
+        @for (speed of speeds; track speed) {
+          <button [class.on]="state().speed() === speed" (click)="chooseSpeed(speed)">{{ speed === 1 ? 'Normal' : speed + '×' }}</button>
+        }
+      </div>
+      @if (qualities().length > 1) {
+        <p class="heading">Quality</p>
+        <div class="choices">
+          <button [class.on]="quality() === 0" (click)="chooseQuality(0)">Auto</button>
+          @for (height of qualities(); track height) {
+            <button [class.on]="quality() === height" (click)="chooseQuality(height)">{{ height }}p</button>
+          }
+        </div>
+      }
+    </div>
+  } @else if (menu() === 'captions') {
+    <div class="menu" role="menu">
+      <p class="heading">Captions</p>
+      <div class="list">
+        <button [class.on]="caption() < 0" (click)="chooseCaption(-1)">Off</button>
+        @for (choice of captions(); track $index) {
+          <button [class.on]="caption() === $index" (click)="chooseCaption($index)">{{ choice.label }}</button>
+        }
+      </div>
+    </div>
+  }
+</div>

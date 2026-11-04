@@ -1,8 +1,11 @@
+import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   effect,
+  inject,
   input,
   output,
   signal,
@@ -14,8 +17,12 @@ import { videoThumbnail } from '../../api/private-urls';
 import { Video } from '../../api/types';
 import { readStored, writeStored } from '../../core/storage';
 import { originalAudioTrack } from './audio-tracks';
+import { CaptionChoice, PlayerControls } from './player-controls';
+import { parseStoryboard, StoryboardFrame } from './storyboard';
+import { speeds, VideoState } from './video-state';
 
 type ShakaPlayer = shakaNamespace.Player;
+type TextTrack = shakaNamespace.extern.TextTrack;
 
 const autoQuality = 0;
 
@@ -23,22 +30,21 @@ const autoQuality = 0;
 @Component({
   selector: 'app-player',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [PlayerControls],
+  host: {
+    '(document:keydown)': 'onKey($event)',
+    '(document:fullscreenchange)': 'onFullscreenChange()',
+  },
   template: `
-    <video #video [controls]="!problem()" playsinline autoplay [poster]="poster()" (ended)="ended.emit()"
+    <video #video playsinline autoplay [poster]="poster()" (ended)="ended.emit()"
            (timeupdate)="rememberPosition()"></video>
     @if (problem(); as problem) {
       <p class="problem">{{ problem }}</p>
-    }
-    @if (qualities().length > 1) {
-      <label class="quality">
-        <span class="visually-hidden">Quality</span>
-        <select (change)="chooseQuality($any($event.target).value)">
-          <option [value]="0">Auto</option>
-          @for (height of qualities(); track height) {
-            <option [value]="height">{{ height }}p</option>
-          }
-        </select>
-      </label>
+    } @else if (state(); as state) {
+      <app-player-controls [state]="state" [frames]="frames()" [qualities]="qualities()" [quality]="quality()"
+                           [captions]="captions()" [caption]="caption()" [fullscreen]="fullscreen()"
+                           (qualityChange)="chooseQuality($event)" (captionChange)="chooseCaption($event)"
+                           (fullscreenToggle)="toggleFullscreen()" />
     }
   `,
   styleUrl: './player.css',
@@ -48,14 +54,33 @@ export class Player {
   readonly startAt = input(0);
   readonly ended = output<void>();
 
+  private readonly host: HTMLElement = inject(ElementRef).nativeElement;
+  private readonly http = inject(HttpClient);
   private readonly element = viewChild.required<ElementRef<HTMLVideoElement>>('video');
-  protected readonly qualities = signal<number[]>([]);
+  private readonly controls = viewChild(PlayerControls);
+
+  protected readonly state = signal<VideoState | null>(null);
   protected readonly poster = signal('');
   protected readonly problem = signal<string | null>(null);
+  protected readonly qualities = signal<number[]>([]);
+  protected readonly quality = signal(autoQuality);
+  protected readonly captions = signal<CaptionChoice[]>([]);
+  protected readonly caption = signal(-1);
+  protected readonly frames = signal<StoryboardFrame[]>([]);
+  protected readonly fullscreen = signal(false);
+
   private player: ShakaPlayer | null = null;
+  private textTracks: TextTrack[] = [];
   private lastSavedSecond = 0;
 
   constructor() {
+    effect((onCleanup) => {
+      const element = this.element().nativeElement;
+      const state = new VideoState(element);
+      this.state.set(state);
+      onCleanup(() => state.dispose());
+    });
+
     effect((onCleanup) => {
       const video = this.video();
       const element = this.element().nativeElement;
@@ -64,15 +89,27 @@ export class Player {
 
       this.poster.set(videoThumbnail(video.videoId, 'hq'));
       this.qualities.set([]);
+      this.quality.set(autoQuality);
+      this.captions.set([]);
+      this.caption.set(-1);
+      this.frames.set([]);
       this.problem.set(null);
       setMediaSession(video);
       this.play(video, element, startAt, () => cancelled);
+      const storyboard = this.loadStoryboard(video.videoId);
 
       onCleanup(() => {
         cancelled = true;
+        storyboard.unsubscribe();
         this.player?.destroy();
         this.player = null;
       });
+    });
+
+    inject(DestroyRef).onDestroy(() => {
+      if (document.fullscreenElement === this.host) {
+        document.exitFullscreen().catch(() => undefined);
+      }
     });
   }
 
@@ -83,18 +120,56 @@ export class Player {
     element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  protected chooseQuality(value: string): void {
+  protected chooseQuality(height: number): void {
     const player = this.player;
     if (!player) {
       return;
     }
-    const height = Number(value);
+    this.quality.set(height);
     player.configure({ abr: { enabled: height === autoQuality } });
-    if (height !== autoQuality) {
-      const track = player.getVariantTracks().find((variant) => variant.height === height);
-      if (track) {
-        player.selectVariantTrack(track, true);
-      }
+    const track = player.getVariantTracks().find((variant) => variant.height === height);
+    if (track) {
+      player.selectVariantTrack(track, true);
+    }
+  }
+
+  protected chooseCaption(index: number): void {
+    this.caption.set(index);
+    this.player?.selectTextTrack(this.textTracks[index] ?? null);
+  }
+
+  toggleFullscreen(): void {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => undefined);
+      return;
+    }
+    if (this.host.requestFullscreen) {
+      this.host
+        .requestFullscreen()
+        .then(() => lockLandscape(this.element().nativeElement))
+        .catch(() => undefined);
+    } else {
+      // iPhones only allow the video element itself to go full screen.
+      (this.element().nativeElement as HTMLVideoElement & { webkitEnterFullscreen?: () => void })
+        .webkitEnterFullscreen?.();
+    }
+  }
+
+  /** YouTube's shortcuts: space/k, j/l, arrows, m, f, c, < and >, and 0–9 to jump. */
+  protected onKey(event: KeyboardEvent): void {
+    const state = this.state();
+    if (!state || this.problem() || event.ctrlKey || event.metaKey || event.altKey || typingIn(event.target)) {
+      return;
+    }
+    const pressedButton = event.target instanceof HTMLButtonElement && (event.key === ' ' || event.key === 'Enter');
+    if (pressedButton) {
+      return;
+    }
+    const action = keyAction(event.key, state, this);
+    if (action) {
+      event.preventDefault();
+      action();
+      this.controls()?.reveal();
     }
   }
 
@@ -107,6 +182,23 @@ export class Player {
     this.lastSavedSecond = second;
     const nearlyOver = element.duration - second < 30;
     writeStored(positionKey(this.video().videoId), second > 10 && !nearlyOver ? String(second) : null);
+  }
+
+  protected onFullscreenChange(): void {
+    this.fullscreen.set(document.fullscreenElement === this.host);
+  }
+
+  /** For the c key: the first caption track, or off again. */
+  toggleCaptions(): void {
+    if (this.textTracks.length) {
+      this.chooseCaption(this.caption() >= 0 ? -1 : 0);
+    }
+  }
+
+  private loadStoryboard(videoId: string) {
+    return this.http
+      .get(`/api/v1/storyboards/${videoId}?height=90`, { responseType: 'text' })
+      .subscribe({ next: (vtt) => this.frames.set(parseStoryboard(vtt)), error: () => undefined });
   }
 
   private async play(video: Video, element: HTMLVideoElement, startAt: number, isCancelled: () => boolean) {
@@ -141,11 +233,13 @@ export class Player {
       if (original && !original.active) {
         player.selectAudioTrack(original);
       }
-      await Promise.all(
+      this.textTracks = await Promise.all(
         video.captions.map((caption) =>
           player.addTextTrackAsync(caption.url, caption.language_code, 'subtitles', 'text/vtt', undefined, caption.label),
         ),
       );
+      player.selectTextTrack(null);
+      this.captions.set(video.captions.map((caption) => ({ label: caption.label })));
       this.qualities.set(distinctHeights(player.getVariantTracks()));
     } catch {
       if (isCancelled()) {
@@ -153,10 +247,64 @@ export class Player {
       }
       this.player?.destroy();
       this.player = null;
+      this.textTracks = [];
       if (!playFile(video, element, startAt)) {
         this.problem.set('This video can’t be played.');
       }
     }
+  }
+}
+
+function keyAction(key: string, state: VideoState, player: Player): (() => void) | null {
+  // The element, not the signal: two quick presses come before the browser reports the first change.
+  const speedIndex = speeds.indexOf(state.element.playbackRate);
+  switch (key) {
+    case ' ':
+    case 'k':
+      return () => state.togglePlay();
+    case 'j':
+      return () => state.seekBy(-10);
+    case 'l':
+      return () => state.seekBy(10);
+    case 'ArrowLeft':
+      return () => state.seekBy(-5);
+    case 'ArrowRight':
+      return () => state.seekBy(5);
+    case 'ArrowUp':
+      return () => state.setVolume(state.volume() + 0.1);
+    case 'ArrowDown':
+      return () => state.setVolume(state.volume() - 0.1);
+    case 'm':
+      return () => state.toggleMute();
+    case 'f':
+      return () => player.toggleFullscreen();
+    case 'c':
+      return () => player.toggleCaptions();
+    case '<':
+      return () => state.setSpeed(speeds[Math.max(speedIndex - 1, 0)]);
+    case '>':
+      return () => state.setSpeed(speeds[Math.min(speedIndex + 1, speeds.length - 1)]);
+  }
+  if (/^[0-9]$/.test(key)) {
+    return () => state.seekTo((Number(key) / 10) * state.duration());
+  }
+  return null;
+}
+
+function typingIn(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
+/** Phones turn sideways for a wide video in full screen; elsewhere this quietly does nothing. */
+function lockLandscape(element: HTMLVideoElement): void {
+  const orientation = screen.orientation as ScreenOrientation & { lock?: (type: string) => Promise<void> };
+  if (element.videoWidth > element.videoHeight) {
+    orientation.lock?.('landscape').catch(() => undefined);
   }
 }
 

@@ -1,0 +1,240 @@
+:host {
+  position: absolute;
+  inset: 0;
+  color: #fff;
+  font-size: .85rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+:host(:not(.visible)) {
+  cursor: none;
+}
+
+.surface {
+  position: absolute;
+  inset: 0;
+}
+
+.spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -1.25rem 0 0 -1.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-color: rgb(255 255 255 / .25);
+  border-top-color: #fff;
+  pointer-events: none;
+}
+
+.big-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  margin: -2rem 0 0 -2rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / .55);
+  color: #fff;
+  cursor: pointer;
+}
+
+.big-play app-icon {
+  width: 2rem;
+  height: 2rem;
+  margin-left: .2rem;
+}
+
+.bar {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 2.5rem .5rem .25rem;
+  background: linear-gradient(transparent, rgb(0 0 0 / .75));
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+
+:host(.visible) .bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The timeline's touch area is taller than the line itself, so a thumb can grab it. */
+.timeline {
+  display: flex;
+  align-items: center;
+  height: 1.5rem;
+  margin: 0 .5rem;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  height: .25rem;
+  border-radius: .125rem;
+  background: rgb(255 255 255 / .3);
+  transition: height .1s;
+}
+
+.timeline:hover .track {
+  height: .375rem;
+}
+
+.buffered,
+.played {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+}
+
+.buffered {
+  background: rgb(255 255 255 / .45);
+}
+
+.played {
+  background: var(--accent);
+}
+
+.handle {
+  position: absolute;
+  top: 50%;
+  width: .8rem;
+  height: .8rem;
+  margin: -.4rem 0 0 -.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.preview {
+  position: absolute;
+  bottom: 4.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .25rem;
+  pointer-events: none;
+}
+
+.frame {
+  border: 2px solid #fff;
+  border-radius: .3rem;
+  background-color: #000;
+  background-repeat: no-repeat;
+}
+
+.preview span {
+  padding: .1rem .4rem;
+  border-radius: .3rem;
+  background: rgb(0 0 0 / .7);
+  font-variant-numeric: tabular-nums;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: .1rem;
+}
+
+button {
+  display: grid;
+  place-items: center;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.buttons app-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.buttons button.on {
+  color: var(--accent);
+}
+
+.volume {
+  display: none;
+  width: 5rem;
+  accent-color: #fff;
+}
+
+.time {
+  margin-left: .4rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.menu {
+  position: absolute;
+  right: .75rem;
+  bottom: 4rem;
+  max-height: 60vh;
+  min-width: 12rem;
+  overflow-y: auto;
+  padding: .5rem;
+  border-radius: .6rem;
+  background: rgb(20 20 22 / .95);
+}
+
+.heading {
+  margin: .35rem .4rem .25rem;
+  color: rgb(255 255 255 / .6);
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  max-width: 16rem;
+}
+
+.choices button,
+.list button {
+  min-width: 0;
+  height: 2rem;
+  padding: 0 .65rem;
+  border-radius: 1rem;
+  background: rgb(255 255 255 / .1);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.list button {
+  justify-items: start;
+  border-radius: .4rem;
+}
+
+.choices button.on,
+.list button.on {
+  background: #fff;
+  color: #000;
+}
+
+@media (min-width: 640px) {
+  .volume {
+    display: block;
+  }
+}
