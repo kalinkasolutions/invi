@@ -42,7 +42,6 @@ export class WatchPage {
 
   protected readonly startAt = computed(() => parseTimestamp(this.t()));
   protected readonly descriptionOpen = signal(false);
-  protected readonly commentsOpen = signal(false);
   protected readonly loadError = computed(() => {
     const error = this.video.error();
     return error ? errorMessage(error.cause ?? error) : null;
@@ -73,7 +72,6 @@ export class WatchPage {
       const video = this.video.value();
       title.setTitle(video ? video.title : 'invi');
       this.descriptionOpen.set(false);
-      this.commentsOpen.set(false);
     });
 
     // Invidious answers 409 when the user turned watch history off; that is fine.

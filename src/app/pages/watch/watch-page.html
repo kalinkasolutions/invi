@@ -2,59 +2,71 @@
   <app-player [video]="video" [startAt]="startAt()" (ended)="playNext()" />
 
   <div class="page">
-    <section class="info">
-      <h1>{{ video.title }}</h1>
-      <p class="meta">{{ details() }}@if (likes()) { · {{ likes() }} likes}</p>
+    <div class="primary">
+      <section class="info">
+        <h1>{{ video.title }}</h1>
+        <p class="meta">
+          {{ details() }}
+          @if (likes()) {
+            · {{ likes() }} likes
+          }
+        </p>
 
-      <div class="channel">
-        <a [routerLink]="['/channel', video.authorId]">
-          <app-avatar [src]="authorAvatar()" [name]="video.author" />
-          <span>
-            <strong>{{ video.author }}</strong>
-            <small>{{ video.subCountText }} subscribers</small>
-          </span>
-        </a>
-        <app-subscribe-button [channelId]="video.authorId" [channelName]="video.author" />
-      </div>
-
-      @if (video.descriptionHtml) {
-        <div class="description" [class.open]="descriptionOpen()">
-          <div class="text rich-text" appRichText [currentVideoId]="video.videoId" (seek)="seek($event)"
-               [innerHTML]="video.descriptionHtml"></div>
-          <button class="link" (click)="descriptionOpen.set(!descriptionOpen())">
-            {{ descriptionOpen() ? 'Show less' : 'Show more' }}
-          </button>
+        <div class="channel">
+          <a [routerLink]="['/channel', video.authorId]">
+            <app-avatar [src]="authorAvatar()" [name]="video.author" />
+            <span>
+              <strong>{{ video.author }}</strong>
+              <small>{{ video.subCountText }} subscribers</small>
+            </span>
+          </a>
+          <app-subscribe-button [channelId]="video.authorId" [channelName]="video.author" />
         </div>
-      }
-    </section>
 
-    @if (playlist.value(); as playlist) {
-      <section class="playlist">
-        <h2>
-          <a routerLink="/playlist" [queryParams]="{ list: playlist.playlistId }">{{ playlist.title }}</a>
-          <small>{{ playlistPosition() + 1 }} / {{ playlist.videoCount }}</small>
-        </h2>
-        @for (item of upNextInPlaylist(); track item.index) {
-          <app-video-card [video]="item" layout="row" [playlistId]="playlist.playlistId" />
+        @if (video.descriptionHtml) {
+          <div class="description" [class.open]="descriptionOpen()">
+            <div
+              class="text rich-text"
+              appRichText
+              [currentVideoId]="video.videoId"
+              (seek)="seek($event)"
+              [innerHTML]="video.descriptionHtml"
+            ></div>
+            <button class="link" (click)="descriptionOpen.set(!descriptionOpen())">
+              {{ descriptionOpen() ? 'Show less' : 'Show more' }}
+            </button>
+          </div>
         }
       </section>
-    }
 
-    <section class="comments">
-      @if (commentsOpen()) {
+      <section class="comments">
         <h2>Comments</h2>
         <app-comments [videoId]="video.videoId" (seek)="seek($event)" />
-      } @else {
-        <button class="button wide" (click)="commentsOpen.set(true)">Show comments</button>
-      }
-    </section>
+      </section>
+    </div>
 
-    <section class="related">
-      <h2>Up next</h2>
-      @for (item of video.recommendedVideos; track item.videoId) {
-        <app-video-card [video]="item" layout="row" />
+    <aside class="secondary">
+      @if (playlist.value(); as playlist) {
+        <section class="playlist">
+          <h2>
+            <a routerLink="/playlist" [queryParams]="{ list: playlist.playlistId }">{{
+              playlist.title
+            }}</a>
+            <small>{{ playlistPosition() + 1 }} / {{ playlist.videoCount }}</small>
+          </h2>
+          @for (item of upNextInPlaylist(); track item.index) {
+            <app-video-card [video]="item" layout="row" [playlistId]="playlist.playlistId" />
+          }
+        </section>
       }
-    </section>
+
+      <section class="related">
+        <h2>Up next</h2>
+        @for (item of video.recommendedVideos; track item.videoId) {
+          <app-video-card [video]="item" layout="row" />
+        }
+      </section>
+    </aside>
   </div>
 } @else if (loadError(); as error) {
   <div class="page">
@@ -62,5 +74,7 @@
     <button class="button" (click)="video.reload()">Try again</button>
   </div>
 } @else {
-  <div class="player-placeholder"><div class="spinner" role="status" aria-label="Loading"></div></div>
+  <div class="player-placeholder">
+    <div class="spinner" role="status" aria-label="Loading"></div>
+  </div>
 }

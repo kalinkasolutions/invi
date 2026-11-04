@@ -99,6 +99,17 @@ h2 small {
   color: var(--text-muted);
 }
 
+/* Phones: one column, with the playlist right under the video info. */
+.primary,
+.secondary {
+  display: contents;
+}
+
+.info { order: 0; }
+.playlist { order: 1; }
+.comments { order: 2; }
+.related { order: 3; }
+
 @media (min-width: 1000px) {
   :host {
     margin-inline: 0;
@@ -107,16 +118,15 @@ h2 small {
 
   .page {
     grid-template-columns: minmax(0, 1fr) 24rem;
-    grid-template-areas:
-      "info playlist"
-      "info related"
-      "comments related";
     align-items: start;
     padding-inline: 0;
   }
 
-  .info { grid-area: info; }
-  .playlist { grid-area: playlist; }
-  .related { grid-area: related; }
-  .comments { grid-area: comments; }
+  .primary,
+  .secondary {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 0;
+  }
 }

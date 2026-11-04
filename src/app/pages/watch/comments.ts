@@ -45,7 +45,7 @@ function commentPager(api: InvidiousApi, videoId: string, firstContinuation?: st
           @for (reply of replies.items(); track reply.commentId) {
             <app-comment [comment]="reply" [videoId]="videoId()" (seek)="seek.emit($event)" />
           }
-          <app-list-status [list]="replies" />
+          <app-list-status [list]="replies" [isEmpty]="!replies.items().length" moreText="More replies" />
         </div>
       } @else if (comment().replies; as info) {
         <button class="link" (click)="showReplies(info.continuation)">
@@ -78,7 +78,8 @@ export class CommentView {
     @for (comment of pager().items(); track comment.commentId) {
       <app-comment [comment]="comment" [videoId]="videoId()" (seek)="seek.emit($event)" />
     }
-    <app-list-status [list]="pager()" [isEmpty]="!pager().items().length" emptyText="No comments." />
+    <app-list-status [list]="pager()" [isEmpty]="!pager().items().length" emptyText="No comments."
+                     moreText="Load more comments" />
   `,
   styles: `:host { display: flex; flex-direction: column; gap: 1.25rem; }`,
 })

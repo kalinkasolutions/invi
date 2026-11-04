@@ -2,13 +2,16 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { NearEnd } from './near-end';
 import { LoadsMore } from './pager';
 
-/** The end of a growing list: loads more on scroll, shows a spinner, an error with retry, or "nothing". */
+/** The end of a growing list: loads more on scroll or from a button, shows a spinner, an error with retry, or "nothing". */
 @Component({
   selector: 'app-list-status',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NearEnd],
   template: `
-    <div [appNearEnd]="list()"></div>
+    <!-- With a more button, only the first page loads by itself. -->
+    @if (!moreText() || isEmpty()) {
+      <div [appNearEnd]="list()"></div>
+    }
     @if (list().loading()) {
       <div class="spinner" role="status" aria-label="Loading"></div>
     } @else if (list().error(); as error) {
@@ -16,6 +19,8 @@ import { LoadsMore } from './pager';
       <button class="button" (click)="list().loadMore()">Try again</button>
     } @else if (list().done() && isEmpty()) {
       <p class="message">{{ emptyText() }}</p>
+    } @else if (moreText() && !list().done()) {
+      <button class="button" (click)="list().loadMore()">{{ moreText() }}</button>
     }
   `,
   styles: `
@@ -27,4 +32,6 @@ export class ListStatus {
   readonly list = input.required<LoadsMore>();
   readonly isEmpty = input(false);
   readonly emptyText = input('Nothing here.');
+  /** When set, pages after the first load from a button with this text instead of on scroll. */
+  readonly moreText = input<string>();
 }
