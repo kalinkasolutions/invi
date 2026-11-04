@@ -13,6 +13,7 @@ import type shakaNamespace from 'shaka-player/dist/shaka-player.compiled-es2021'
 import { videoThumbnail } from '../../api/private-urls';
 import { Video } from '../../api/types';
 import { readStored, writeStored } from '../../core/storage';
+import { originalAudioTrack } from './audio-tracks';
 
 type ShakaPlayer = shakaNamespace.Player;
 
@@ -126,10 +127,19 @@ export class Player {
       this.player = player;
       await player.attach(element);
       // Auto quality stays at the player's size: no 4K for a phone screen.
-      player.configure({ streaming: { bufferingGoal: 30 }, abr: { restrictToElementSize: true } });
+      // Audio starts in the original language, not an AI dub matching the browser's language.
+      player.configure({
+        streaming: { bufferingGoal: 30 },
+        abr: { restrictToElementSize: true },
+        preferredAudio: [{ role: 'main' }],
+      });
       await player.load(manifestUrl(video), startAt || null);
       if (isCancelled()) {
         return;
+      }
+      const original = originalAudioTrack(player.getAudioTracks());
+      if (original && !original.active) {
+        player.selectAudioTrack(original);
       }
       await Promise.all(
         video.captions.map((caption) =>
