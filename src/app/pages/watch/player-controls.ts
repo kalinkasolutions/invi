@@ -121,7 +121,7 @@ export class PlayerControls {
     }
   }
 
-  /** A click plays or pauses; on touch a tap shows or hides the controls. A double tap or click skips. */
+  /** A click plays or pauses; on touch a tap shows or hides the controls. For double taps see onDoubleTap. */
   protected onSurfaceTap(event: PointerEvent): void {
     this.lastPointerType = event.pointerType;
     if (this.menu()) {
@@ -136,7 +136,7 @@ export class PlayerControls {
     if (this.tapTimer) {
       clearTimeout(this.tapTimer);
       this.tapTimer = undefined;
-      this.skip(event);
+      this.onDoubleTap(event);
       return;
     }
     this.tapTimer = setTimeout(() => {
@@ -222,14 +222,21 @@ export class PlayerControls {
   // Phones fire dblclick after a double tap too; that one was already handled in onSurfaceTap.
   protected onDoubleClick(event: MouseEvent): void {
     if (this.lastPointerType === 'mouse') {
-      this.skip(event);
+      this.onDoubleTap(event);
     }
   }
 
-  /** Forward, or back when it lands on the left part of the video. */
-  private skip(event: MouseEvent): void {
-    const backwards = event.offsetX / this.host.clientWidth < 0.4;
-    this.state().seekBy(backwards ? -skipSeconds : skipSeconds);
+  /** Left third: back 5 seconds. Middle third: full screen. Right third: forward 5 seconds. */
+  private onDoubleTap(event: MouseEvent): void {
+    const position = event.offsetX / this.host.clientWidth;
+    if (position < 1 / 3) {
+      this.state().seekBy(-skipSeconds);
+    } else if (position > 2 / 3) {
+      this.state().seekBy(skipSeconds);
+    } else {
+      this.fullscreenToggle.emit();
+      return;
+    }
     this.reveal();
   }
 
