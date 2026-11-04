@@ -12,14 +12,14 @@
   align-items: center;
   gap: .75rem;
   height: var(--top-bar-height);
-  padding: 0 var(--gutter);
-  padding-top: env(safe-area-inset-top);
+  /* Same left and right edges as the page content below, however wide the window is. */
+  padding: env(safe-area-inset-top) max(var(--gutter), calc((100% - var(--page-width)) / 2 + var(--gutter))) 0;
   box-sizing: content-box;
   background: var(--background);
 }
 
 main {
-  max-width: 110rem;
+  max-width: var(--page-width);
   margin: 0 auto;
   padding: var(--page-top) var(--gutter) 2rem;
 }
@@ -64,10 +64,12 @@ main {
     display: none;
   }
 
+  /* The negative margin lines the last link's text up with the page edge, not its padding. */
   .wide-nav {
     display: flex;
     gap: .25rem;
     margin-left: auto;
+    margin-right: -.85rem;
   }
 
   .wide-nav a {
