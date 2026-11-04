@@ -9,6 +9,11 @@ server {
         return 200 '{ "invidiousUrl": "${INVIDIOUS_PUBLIC_URL}" }';
     }
 
+    # Watch positions, kept by the small server in this container (server/main.mjs).
+    location /invi-api/ {
+        proxy_pass http://127.0.0.1:8081;
+    }
+
     # Everything Invidious serves, proxied so the app and its token stay on one origin.
     location ~ ^/(api|companion|vi|ggpht|sb|videoplayback)(/|$) {
         proxy_pass ${INVIDIOUS_URL};

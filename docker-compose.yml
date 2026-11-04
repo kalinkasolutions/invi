@@ -17,6 +17,9 @@ services:
     environment:
       INVIDIOUS_URL: http://invidious:3000
       INVIDIOUS_PUBLIC_URL: https://invidious.example.com
+    volumes:
+      # Watch positions, so they follow you from device to device.
+      - invi-data:/data
     depends_on:
       - invidious
 
@@ -81,3 +84,4 @@ services:
 volumes:
   postgresdata:
   companioncache:
+  invi-data:

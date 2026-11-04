@@ -8,6 +8,8 @@ It runs as one extra container next to Invidious and uses Invidious' own `/api/v
 - Preview thumbnails on the timeline, speed and quality menus that remember your choice, YouTube's keyboard
   shortcuts (space/k, j/l, arrows, m, f, c, < and >, 0–9)
 - Always the original audio, never YouTube's AI dubs
+- Watch positions that follow you from device to device, and a "Watch on YouTube" link at the
+  current time
 - Sign in with your Invidious account
 - Light and dark, made for the phone first
 
@@ -19,7 +21,11 @@ It runs as one extra container next to Invidious and uses Invidious' own `/api/v
    header sent to another origin fails Invidious' CORS preflight.
 3. Video plays through Invidious' DASH manifest with shaka-player. If that fails, it falls back
    to the 360p file.
-4. Sign-in uses Invidious' token flow. The app sends you to `INVIDIOUS_PUBLIC_URL/authorize_token`.
+4. A small Node server in the same container (`server/main.mjs`, no dependencies) keeps watch
+   positions per user in `/data/positions.json`, behind `/invi-api/`. It accepts a request when
+   Invidious accepts its token. Invidious can't say whose token it is, so the username comes from
+   sign-in: on a shared Invidious, one signed-in user could write another's positions.
+5. Sign-in uses Invidious' token flow. The app sends you to `INVIDIOUS_PUBLIC_URL/authorize_token`.
    You sign in there and allow a token with a few scopes. Invidious sends you back to
    `/auth/callback`, and the token is kept in the browser.
 
@@ -47,9 +53,11 @@ invi:
   environment:
     INVIDIOUS_URL: http://invidious:3000
     INVIDIOUS_PUBLIC_URL: https://invidious.example.com
+  volumes:
+    - invi-data:/data
 ```
 
-Then put a hostname for invi behind your reverse proxy, pointing at port 8080.
+and `invi-data:` under `volumes:` at the end of the file. Then put a hostname for invi behind your reverse proxy, pointing at port 8080.
 
 ## Limits
 
@@ -65,7 +73,7 @@ INVIDIOUS_URL=https://invidious.example.com npm start
 ```
 
 This serves the app on port 4200 and proxies the Invidious paths to that server.
-`npm test` runs the unit tests.
+`npm test` runs the app's unit tests, `npm run test:server` the position server's.
 
 ## Release
 

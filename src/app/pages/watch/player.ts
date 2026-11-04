@@ -15,7 +15,7 @@ import {
 import type shakaNamespace from 'shaka-player/dist/shaka-player.compiled-es2021';
 import { videoThumbnail } from '../../api/private-urls';
 import { Video } from '../../api/types';
-import { readStored, writeStored } from '../../core/storage';
+import { positionToKeep, WatchPositions } from '../../core/watch-positions';
 import { originalAudioTrack } from './audio-tracks';
 import { CaptionChoice, PlayerControls } from './player-controls';
 import { autoQuality, closestQuality, qualitiesOf, savedQuality, saveQuality, variantWithQuality } from './quality';
@@ -36,7 +36,7 @@ type TextTrack = shakaNamespace.extern.TextTrack;
   },
   template: `
     <video #video playsinline autoplay [poster]="poster()" (ended)="ended.emit()"
-           (timeupdate)="rememberPosition()"></video>
+           (timeupdate)="keepCurrentPosition()" (pause)="keepCurrentPosition(true)"></video>
     @if (problem(); as problem) {
       <p class="problem">{{ problem }}</p>
     } @else if (state(); as state) {
@@ -55,6 +55,7 @@ export class Player {
 
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private readonly http = inject(HttpClient);
+  private readonly positions = inject(WatchPositions);
   private readonly element = viewChild.required<ElementRef<HTMLVideoElement>>('video');
   private readonly controls = viewChild(PlayerControls);
 
@@ -83,7 +84,7 @@ export class Player {
     effect((onCleanup) => {
       const video = this.video();
       const element = this.element().nativeElement;
-      const startAt = untracked(this.startAt) || savedPosition(video.videoId);
+      const requestedStart = untracked(this.startAt);
       let cancelled = false;
 
       this.poster.set(videoThumbnail(video.videoId, 'hq'));
@@ -94,11 +95,12 @@ export class Player {
       this.frames.set([]);
       this.problem.set(null);
       setMediaSession(video);
-      this.play(video, element, startAt, () => cancelled);
+      this.play(video, element, requestedStart, () => cancelled);
       const storyboard = this.loadStoryboard(video.videoId);
 
       onCleanup(() => {
         cancelled = true;
+        this.keepPosition(video.videoId, true);
         storyboard.unsubscribe();
         this.player?.destroy();
         this.player = null;
@@ -165,15 +167,31 @@ export class Player {
     }
   }
 
-  protected rememberPosition(): void {
+  /** For "watch on YouTube": where the video is now. */
+  currentTime(): number {
+    return this.element().nativeElement.currentTime;
+  }
+
+  pause(): void {
+    this.element().nativeElement.pause();
+  }
+
+  protected keepCurrentPosition(now = false): void {
+    this.keepPosition(this.video().videoId, now);
+  }
+
+  /** Every few seconds while playing, and at once on pause or when leaving the video. */
+  private keepPosition(videoId: string, now = false): void {
     const element = this.element().nativeElement;
+    if (!element.duration) {
+      return;
+    }
     const second = Math.floor(element.currentTime);
-    if (Math.abs(second - this.lastSavedSecond) < 5) {
+    if (!now && Math.abs(second - this.lastSavedSecond) < 5) {
       return;
     }
     this.lastSavedSecond = second;
-    const nearlyOver = element.duration - second < 30;
-    writeStored(positionKey(this.video().videoId), second > 10 && !nearlyOver ? String(second) : null);
+    this.positions.remember(videoId, positionToKeep(element.currentTime, element.duration), now);
   }
 
   protected onFullscreenChange(): void {
@@ -206,10 +224,14 @@ export class Player {
       .subscribe({ next: (vtt) => this.frames.set(parseStoryboard(vtt)), error: () => undefined });
   }
 
-  private async play(video: Video, element: HTMLVideoElement, startAt: number, isCancelled: () => boolean) {
+  private async play(video: Video, element: HTMLVideoElement, requestedStart: number, isCancelled: () => boolean) {
     // Invidious Companion gives no HLS link for live streams, and their DASH manifest is empty.
     if (video.liveNow && !video.hlsUrl) {
       this.problem.set('Live streams can’t be played: your Invidious server gives no stream for them.');
+      return;
+    }
+    const startAt = requestedStart || (await this.positions.startOf(video.videoId));
+    if (isCancelled()) {
       return;
     }
     try {
@@ -334,14 +356,6 @@ function playFile(video: Video, element: HTMLVideoElement, startAt: number): boo
   element.currentTime = startAt;
   element.play().catch(() => undefined);
   return true;
-}
-
-function positionKey(videoId: string): string {
-  return `invi.position.${videoId}`;
-}
-
-function savedPosition(videoId: string): number {
-  return Number(readStored(positionKey(videoId)) ?? 0);
 }
 
 /** Title and picture on the lock screen and in the notification shade. */

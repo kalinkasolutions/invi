@@ -6,7 +6,8 @@
     "start": "node scripts/dev-config.mjs && ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:server": "node --test 'server/*.test.mjs'"
   },
   "private": true,
   "packageManager": "npm@11.19.0",

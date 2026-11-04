@@ -50,11 +50,17 @@ export class Auth {
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(Auth);
   const token = auth.token();
-  if (!token || !request.url.startsWith('/api/v1/auth/')) {
+  const toPositionServer = request.url.startsWith('/invi-api/');
+  if (!token || !(request.url.startsWith('/api/v1/auth/') || toPositionServer)) {
     return next(request);
   }
   // Invidious hands the token over still form-encoded and decodes the header itself.
-  const authorized = request.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+  // The position server checks the token with Invidious, which can't tell it whose it is.
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (toPositionServer) {
+    headers['X-Invi-User'] = auth.username() ?? '';
+  }
+  const authorized = request.clone({ setHeaders: headers });
   return next(authorized).pipe(
     catchError((error) => {
       if (error.status === 403 && error.error?.error !== 'Invalid scope') {

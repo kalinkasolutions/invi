@@ -130,3 +130,8 @@ h2 small {
     min-width: 0;
   }
 }
+
+.youtube {
+  color: var(--link);
+  white-space: nowrap;
+}

@@ -10,6 +10,9 @@
           @if (likes()) {
             · {{ likes() }} likes
           }
+          ·
+          <a class="youtube" [href]="youtubeUrl(video.videoId, 0)" target="_blank" rel="noopener noreferrer"
+             (click)="openOnYouTube($event, video.videoId)">Watch on YouTube</a>
         </p>
 
         <div class="channel">

@@ -86,6 +86,21 @@ export class WatchPage {
     });
   }
 
+  protected youtubeUrl(videoId: string, seconds: number): string {
+    const time = Math.floor(seconds);
+    return `https://www.youtube.com/watch?v=${videoId}${time > 0 ? `&t=${time}s` : ''}`;
+  }
+
+  /** The link opens YouTube where the video is now; this player pauses so the two don't overlap. */
+  protected openOnYouTube(event: MouseEvent, videoId: string): void {
+    const player = this.player();
+    if (!player) {
+      return;
+    }
+    (event.currentTarget as HTMLAnchorElement).href = this.youtubeUrl(videoId, player.currentTime());
+    player.pause();
+  }
+
   protected seek(seconds: number): void {
     this.player()?.seekTo(seconds);
   }
