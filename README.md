@@ -5,7 +5,7 @@ It runs as one extra container next to Invidious and uses Invidious' own `/api/v
 
 - Subscriptions, trending, search, channels, playlists, comments, history
 - Adaptive video quality, captions, resume where you stopped
-- Preview thumbnails on the timeline, a speed menu that remembers your choice, YouTube's keyboard
+- Preview thumbnails on the timeline, speed and quality menus that remember your choice, YouTube's keyboard
   shortcuts (space/k, j/l, arrows, m, f, c, < and >, 0–9)
 - Always the original audio, never YouTube's AI dubs
 - Sign in with your Invidious account

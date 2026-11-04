@@ -18,13 +18,12 @@ import { Video } from '../../api/types';
 import { readStored, writeStored } from '../../core/storage';
 import { originalAudioTrack } from './audio-tracks';
 import { CaptionChoice, PlayerControls } from './player-controls';
+import { autoQuality, closestQuality, savedQuality, saveQuality } from './quality';
 import { parseStoryboard, StoryboardFrame } from './storyboard';
 import { speeds, VideoState } from './video-state';
 
 type ShakaPlayer = shakaNamespace.Player;
 type TextTrack = shakaNamespace.extern.TextTrack;
-
-const autoQuality = 0;
 
 /** Plays a video through Invidious' DASH manifest (adaptive quality), or its 360p file as a fallback. */
 @Component({
@@ -120,17 +119,10 @@ export class Player {
     element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  /** From the menu: applies the quality and keeps it for the next videos. */
   protected chooseQuality(height: number): void {
-    const player = this.player;
-    if (!player) {
-      return;
-    }
-    this.quality.set(height);
-    player.configure({ abr: { enabled: height === autoQuality } });
-    const track = player.getVariantTracks().find((variant) => variant.height === height);
-    if (track) {
-      player.selectVariantTrack(track, true);
-    }
+    saveQuality(height);
+    this.applyQuality(height);
   }
 
   protected chooseCaption(index: number): void {
@@ -195,6 +187,19 @@ export class Player {
     }
   }
 
+  private applyQuality(height: number): void {
+    const player = this.player;
+    if (!player) {
+      return;
+    }
+    this.quality.set(height);
+    player.configure({ abr: { enabled: height === autoQuality } });
+    const track = player.getVariantTracks().find((variant) => variant.height === height);
+    if (track) {
+      player.selectVariantTrack(track, true);
+    }
+  }
+
   private loadStoryboard(videoId: string) {
     return this.http
       .get(`/api/v1/storyboards/${videoId}?height=90`, { responseType: 'text' })
@@ -240,7 +245,13 @@ export class Player {
       );
       player.selectTextTrack(null);
       this.captions.set(video.captions.map((caption) => ({ label: caption.label })));
-      this.qualities.set(distinctHeights(player.getVariantTracks()));
+      const qualities = distinctHeights(player.getVariantTracks());
+      this.qualities.set(qualities);
+      // A quality chosen before replaces Auto, or the closest this video has.
+      const wanted = savedQuality();
+      if (wanted !== autoQuality) {
+        this.applyQuality(closestQuality(qualities, wanted) ?? autoQuality);
+      }
     } catch {
       if (isCancelled()) {
         return;
