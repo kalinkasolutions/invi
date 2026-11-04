@@ -1,0 +1,122 @@
+:host {
+  display: block;
+  margin: calc(-1 * var(--page-top)) calc(-1 * var(--gutter)) 0;
+}
+
+.page {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1rem var(--gutter) 0;
+}
+
+.player-placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  max-height: 75vh;
+  background: #000;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+h2 {
+  margin: 0 0 .75rem;
+  font-size: 1rem;
+}
+
+h2 small {
+  margin-left: .5rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.meta {
+  margin: .35rem 0 0;
+  color: var(--text-muted);
+  font-size: .85rem;
+}
+
+.channel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.channel a {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+}
+
+.channel strong,
+.channel small {
+  display: block;
+}
+
+.channel small {
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+.description {
+  margin-top: 1rem;
+  padding: .75rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: .9rem;
+}
+
+.description .text {
+  max-height: 4.5em;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.description.open .text {
+  max-height: none;
+}
+
+.playlist,
+.related {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
+.playlist h2 {
+  margin: 0;
+}
+
+.error {
+  color: var(--text-muted);
+}
+
+@media (min-width: 1000px) {
+  :host {
+    margin-inline: 0;
+    margin-top: 0;
+  }
+
+  .page {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    grid-template-areas:
+      "info playlist"
+      "info related"
+      "comments related";
+    align-items: start;
+    padding-inline: 0;
+  }
+
+  .info { grid-area: info; }
+  .playlist { grid-area: playlist; }
+  .related { grid-area: related; }
+  .comments { grid-area: comments; }
+}

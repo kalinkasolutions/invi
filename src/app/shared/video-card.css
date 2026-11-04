@@ -1,0 +1,88 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  min-width: 0;
+}
+
+:host(.row) {
+  flex-direction: row;
+  gap: .75rem;
+}
+
+.thumbnail {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--surface-strong);
+}
+
+:host(:not(.row)) .thumbnail {
+  margin-inline: calc(-1 * var(--gutter));
+}
+
+:host(.row) .thumbnail {
+  flex: 0 0 42%;
+  max-width: 11rem;
+  border-radius: var(--radius-small);
+}
+
+@media (min-width: 640px) {
+  :host(:not(.row)) .thumbnail {
+    margin-inline: 0;
+    border-radius: var(--radius);
+  }
+}
+
+/* hqdefault is 4:3 with black bars; cover crops them away. */
+img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.badge {
+  position: absolute;
+  right: .4rem;
+  bottom: .4rem;
+  padding: .05rem .35rem;
+  border-radius: .3rem;
+  background: rgb(0 0 0 / .8);
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge.live {
+  background: var(--accent);
+  text-transform: uppercase;
+}
+
+.text {
+  min-width: 0;
+}
+
+.title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+:host(.row) .title {
+  font-size: .9rem;
+}
+
+.meta {
+  margin: .25rem 0 0;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+.meta a + span:not(:empty)::before {
+  content: " · ";
+}

@@ -1,0 +1,31 @@
+# Rendered by the nginx image at start; only the ${INVIDIOUS_*} variables are filled in.
+server {
+    listen 8080;
+    root /usr/share/nginx/html;
+
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control "no-store";
+        return 200 '{ "invidiousUrl": "${INVIDIOUS_PUBLIC_URL}" }';
+    }
+
+    # Everything Invidious serves, proxied so the app and its token stay on one origin.
+    location ~ ^/(api|companion|vi|ggpht|sb|videoplayback)(/|$) {
+        proxy_pass ${INVIDIOUS_URL};
+        proxy_set_header Host $proxy_host;
+        proxy_ssl_server_name on;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+    }
+
+    location ~* \.(js|css|svg|woff2?)$ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri /index.html;
+    }
+}

@@ -1,0 +1,42 @@
+:host {
+  position: relative;
+  display: block;
+  background: #000;
+}
+
+video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 75vh;
+  background: #000;
+}
+
+.quality {
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+}
+
+.quality select {
+  padding: .2rem .4rem;
+  border: 0;
+  border-radius: .4rem;
+  background: rgb(0 0 0 / .6);
+  color: #fff;
+  font: inherit;
+  font-size: .8rem;
+}
+
+.problem {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem 2rem;
+  background: rgb(0 0 0 / .7);
+  color: #fff;
+  font-size: .9rem;
+  text-align: center;
+}

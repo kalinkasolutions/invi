@@ -1,0 +1,60 @@
+h1 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  height: 2.5rem;
+  margin-bottom: 1rem;
+  padding: 0 .9rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  color: var(--text-muted);
+}
+
+.search app-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem; /* 16px keeps iOS from zooming in on focus. */
+  outline: none;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+  max-width: 50rem;
+}
+
+.hint {
+  margin-top: 1.5rem;
+  color: var(--text-muted);
+  font-size: .85rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: .5rem;
+}
+
+img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-small);
+  background: var(--surface-strong);
+}

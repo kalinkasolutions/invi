@@ -1,0 +1,61 @@
+:host {
+  position: relative;
+  display: block;
+  flex: 1;
+  max-width: 36rem;
+}
+
+form {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  height: 2.5rem;
+  padding: 0 .9rem;
+  border-radius: 1.25rem;
+  background: var(--surface-strong);
+  color: var(--text-muted);
+  --icon-size: 1.2rem;
+}
+
+form app-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem; /* 16px keeps iOS from zooming in on focus. */
+  outline: none;
+}
+
+input::-webkit-search-cancel-button {
+  display: none;
+}
+
+ul {
+  position: absolute;
+  top: calc(100% + .4rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: .4rem 0;
+  list-style: none;
+  border-radius: var(--radius);
+  background: var(--background);
+  box-shadow: 0 8px 30px rgb(0 0 0 / .2);
+  z-index: 10;
+}
+
+li {
+  padding: .6rem 1rem;
+  cursor: pointer;
+}
+
+li:hover {
+  background: var(--surface);
+}

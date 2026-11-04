@@ -1,0 +1,83 @@
+# Invidious with invi in front of it. Based on Invidious' installation guide:
+# https://docs.invidious.io/installation/
+#
+# Run it from a clone of the Invidious repository: the database is set up from its
+# config/sql and docker/init-invidious-db.sh.
+#
+# Replace every CHANGE_ME, and put both public addresses behind a reverse proxy with HTTPS:
+#   invidious.example.com -> port 3000 (Invidious; sign-in happens here)
+#   invi.example.com      -> port 8080 (invi)
+
+services:
+  invi:
+    image: kalinkasolutions/invi:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      INVIDIOUS_URL: http://invidious:3000
+      INVIDIOUS_PUBLIC_URL: https://invidious.example.com
+    depends_on:
+      - invidious
+
+  invidious:
+    image: quay.io/invidious/invidious:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # All options: https://github.com/iv-org/invidious/blob/master/config/config.example.yml
+      INVIDIOUS_CONFIG: |
+        db:
+          dbname: invidious
+          user: kemal
+          password: kemal
+          host: invidious-db
+          port: 5432
+        check_tables: true
+        invidious_companion:
+          - private_url: "http://companion:8282/companion"
+        # The same key as SERVER_SECRET_KEY below; generate it, don't reuse hmac_key.
+        invidious_companion_key: "CHANGE_ME"
+        hmac_key: "CHANGE_ME"
+        domain: invidious.example.com
+        https_only: true
+        external_port: 443
+    healthcheck:
+      test: wget -nv --tries=1 --spider http://127.0.0.1:3000/api/v1/stats || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 2
+    depends_on:
+      - invidious-db
+
+  companion:
+    image: quay.io/invidious/invidious-companion:latest
+    restart: unless-stopped
+    environment:
+      - SERVER_SECRET_KEY=CHANGE_ME
+    cap_drop:
+      - ALL
+    read_only: true
+    volumes:
+      - companioncache:/var/tmp/youtubei.js:rw
+    security_opt:
+      - no-new-privileges:true
+
+  invidious-db:
+    image: docker.io/library/postgres:14
+    restart: unless-stopped
+    volumes:
+      - postgresdata:/var/lib/postgresql/data
+      - ./config/sql:/config/sql
+      - ./docker/init-invidious-db.sh:/docker-entrypoint-initdb.d/init-invidious-db.sh
+    environment:
+      POSTGRES_DB: invidious
+      POSTGRES_USER: kemal
+      POSTGRES_PASSWORD: kemal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+
+volumes:
+  postgresdata:
+  companioncache:

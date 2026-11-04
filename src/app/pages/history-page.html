@@ -1,0 +1,32 @@
+@if (pager(); as pager) {
+  <h1>History</h1>
+  <label class="search">
+    <app-icon name="search" />
+    <input type="search" placeholder="Search history" autocomplete="off" enterkeyhint="search"
+           aria-label="Search history" [value]="query()" (input)="query.set($any($event.target).value)" />
+  </label>
+
+  @if (searching()) {
+    <div class="results">
+      @for (video of results(); track video.videoId) {
+        <app-video-card [video]="video" layout="row" />
+      } @empty {
+        <p class="empty">Nothing found.</p>
+      }
+    </div>
+    <p class="hint">Search covers videos watched in this app on this device. Invidious saves no titles,
+      so older videos can't be found.</p>
+  } @else {
+    <div class="grid">
+      @for (videoId of pager.items(); track videoId) {
+        <a routerLink="/watch" [queryParams]="{ v: videoId }">
+          <img [src]="thumbnail(videoId)" alt="" loading="lazy" />
+        </a>
+      }
+    </div>
+    <app-list-status [list]="pager" [isEmpty]="!pager.items().length"
+                     emptyText="Nothing watched yet, or history is turned off in your Invidious preferences." />
+  }
+} @else {
+  <app-sign-in-prompt reason="Sign in to see your history." />
+}
