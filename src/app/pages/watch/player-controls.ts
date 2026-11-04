@@ -195,8 +195,8 @@ export class PlayerControls {
     this.menu.set(null);
   }
 
-  protected chooseQuality(height: number): void {
-    this.qualityChange.emit(height);
+  protected chooseQuality(quality: number): void {
+    this.qualityChange.emit(quality);
     this.menu.set(null);
   }
 

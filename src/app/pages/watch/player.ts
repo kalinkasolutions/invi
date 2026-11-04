@@ -18,7 +18,7 @@ import { Video } from '../../api/types';
 import { readStored, writeStored } from '../../core/storage';
 import { originalAudioTrack } from './audio-tracks';
 import { CaptionChoice, PlayerControls } from './player-controls';
-import { autoQuality, closestQuality, savedQuality, saveQuality } from './quality';
+import { autoQuality, closestQuality, qualitiesOf, savedQuality, saveQuality, variantWithQuality } from './quality';
 import { parseStoryboard, StoryboardFrame } from './storyboard';
 import { speeds, VideoState } from './video-state';
 
@@ -120,9 +120,9 @@ export class Player {
   }
 
   /** From the menu: applies the quality and keeps it for the next videos. */
-  protected chooseQuality(height: number): void {
-    saveQuality(height);
-    this.applyQuality(height);
+  protected chooseQuality(quality: number): void {
+    saveQuality(quality);
+    this.applyQuality(quality);
   }
 
   protected chooseCaption(index: number): void {
@@ -187,14 +187,14 @@ export class Player {
     }
   }
 
-  private applyQuality(height: number): void {
+  private applyQuality(quality: number): void {
     const player = this.player;
     if (!player) {
       return;
     }
-    this.quality.set(height);
-    player.configure({ abr: { enabled: height === autoQuality } });
-    const track = player.getVariantTracks().find((variant) => variant.height === height);
+    this.quality.set(quality);
+    player.configure({ abr: { enabled: quality === autoQuality } });
+    const track = variantWithQuality(player.getVariantTracks(), quality);
     if (track) {
       player.selectVariantTrack(track, true);
     }
@@ -245,7 +245,7 @@ export class Player {
       );
       player.selectTextTrack(null);
       this.captions.set(video.captions.map((caption) => ({ label: caption.label })));
-      const qualities = distinctHeights(player.getVariantTracks());
+      const qualities = qualitiesOf(player.getVariantTracks());
       this.qualities.set(qualities);
       // A quality chosen before replaces Auto, or the closest this video has.
       const wanted = savedQuality();
@@ -334,11 +334,6 @@ function playFile(video: Video, element: HTMLVideoElement, startAt: number): boo
   element.currentTime = startAt;
   element.play().catch(() => undefined);
   return true;
-}
-
-function distinctHeights(tracks: { height: number | null }[]): number[] {
-  const heights = tracks.map((track) => track.height).filter((height): height is number => !!height);
-  return [...new Set(heights)].sort((a, b) => b - a);
 }
 
 function positionKey(videoId: string): string {

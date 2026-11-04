@@ -68,8 +68,8 @@
         <p class="heading">Quality</p>
         <div class="choices">
           <button [class.on]="quality() === 0" (click)="chooseQuality(0)">Auto</button>
-          @for (height of qualities(); track height) {
-            <button [class.on]="quality() === height" (click)="chooseQuality(height)">{{ height }}p</button>
+          @for (option of qualities(); track option) {
+            <button [class.on]="quality() === option" (click)="chooseQuality(option)">{{ option }}p</button>
           }
         </div>
       }
