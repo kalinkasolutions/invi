@@ -25,7 +25,7 @@ type Menu = 'settings' | 'captions' | null;
 
 const hideAfterMs = 2500;
 const doubleTapMs = 300;
-const tapSeekSeconds = 10;
+const skipSeconds = 5;
 
 /** The player's own controls: a timeline with preview thumbnails, and the buttons below it. */
 @Component({
@@ -64,6 +64,7 @@ export class PlayerControls {
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private hideTimer?: ReturnType<typeof setTimeout>;
   private tapTimer?: ReturnType<typeof setTimeout>;
+  private lastPointerType = '';
 
   // Paused, scrubbing, pointed at or with a menu open, the controls stay; while playing they fade after a while.
   protected readonly visible = computed(
@@ -120,8 +121,9 @@ export class PlayerControls {
     }
   }
 
-  /** A click plays or pauses; on touch a tap shows or hides the controls and a double tap skips. */
+  /** A click plays or pauses; on touch a tap shows or hides the controls. A double tap or click skips. */
   protected onSurfaceTap(event: PointerEvent): void {
+    this.lastPointerType = event.pointerType;
     if (this.menu()) {
       this.menu.set(null);
       return;
@@ -134,7 +136,7 @@ export class PlayerControls {
     if (this.tapTimer) {
       clearTimeout(this.tapTimer);
       this.tapTimer = undefined;
-      this.skipFromTap(event);
+      this.skip(event);
       return;
     }
     this.tapTimer = setTimeout(() => {
@@ -217,15 +219,18 @@ export class PlayerControls {
     this.state().setVolume(Number((event.target as HTMLInputElement).value));
   }
 
-  private skipFromTap(event: PointerEvent): void {
-    const position = event.offsetX / this.host.clientWidth;
-    if (position < 0.4) {
-      this.state().seekBy(-tapSeekSeconds);
-    } else if (position > 0.6) {
-      this.state().seekBy(tapSeekSeconds);
-    } else {
-      this.state().togglePlay();
+  // Phones fire dblclick after a double tap too; that one was already handled in onSurfaceTap.
+  protected onDoubleClick(event: MouseEvent): void {
+    if (this.lastPointerType === 'mouse') {
+      this.skip(event);
     }
+  }
+
+  /** Forward, or back when it lands on the left part of the video. */
+  private skip(event: MouseEvent): void {
+    const backwards = event.offsetX / this.host.clientWidth < 0.4;
+    this.state().seekBy(backwards ? -skipSeconds : skipSeconds);
+    this.reveal();
   }
 
   private timeAt(event: PointerEvent): number {

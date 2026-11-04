@@ -1,4 +1,4 @@
-<div class="surface" (pointerup)="onSurfaceTap($event)" (dblclick)="fullscreenToggle.emit()"></div>
+<div class="surface" (pointerup)="onSurfaceTap($event)" (dblclick)="onDoubleClick($event)"></div>
 
 @if (state().waiting()) {
   <div class="spinner" role="status" aria-label="Loading"></div>
