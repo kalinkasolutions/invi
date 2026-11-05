@@ -1,6 +1,6 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map, Observable } from 'rxjs';
+import { map, Observable, retry, throwError, timer } from 'rxjs';
 import { rewriteGoogleUrls } from './private-urls';
 import {
   Channel,
@@ -21,6 +21,23 @@ import {
 } from './types';
 
 type QueryParams = Record<string, string | number | undefined>;
+
+// Invidious answers 500 to 504 while Companion restarts or YouTube hiccups; a moment later it works.
+const passingFaults = [500, 502, 503, 504];
+const retryDelaysMs = [1500, 3000];
+
+/** Retries a request that failed with a passing server fault; other errors come through at once. */
+export function retryPassingFaults<T>(request: Observable<T>): Observable<T> {
+  return request.pipe(
+    retry({
+      count: retryDelaysMs.length,
+      delay: (error, attempt) =>
+        error instanceof HttpErrorResponse && passingFaults.includes(error.status)
+          ? timer(retryDelaysMs[attempt - 1])
+          : throwError(() => error),
+    }),
+  );
+}
 
 /** Invidious' /api/v1, reached through the container's proxy on this same origin. */
 @Injectable({ providedIn: 'root' })
@@ -112,6 +129,6 @@ export class InvidiousApi {
   private get<T>(path: string, query: QueryParams = {}): Observable<T> {
     const definedQuery = Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined));
     const params = new HttpParams({ fromObject: definedQuery as Record<string, string | number> });
-    return this.http.get<T>(`/api/v1/${path}`, { params }).pipe(map(rewriteGoogleUrls));
+    return retryPassingFaults(this.http.get<T>(`/api/v1/${path}`, { params })).pipe(map(rewriteGoogleUrls));
   }
 }
