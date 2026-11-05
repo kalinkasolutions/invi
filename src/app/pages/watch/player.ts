@@ -73,6 +73,8 @@ export class Player {
   private player: ShakaPlayer | null = null;
   private textTracks: TextTrack[] = [];
   private lastSavedSecond = 0;
+  private reloadedAt: number[] = [];
+  private reloading = false;
 
   constructor() {
     effect((onCleanup) => {
@@ -188,7 +190,8 @@ export class Player {
   /** Every few seconds while playing, and at once on pause or when leaving the video. */
   private keepPosition(videoId: string, now = false): void {
     const element = this.element().nativeElement;
-    if (!element.duration) {
+    // A reload or a failed video stands at 0:00 for a while; that must not replace where you were.
+    if (!element.duration || this.reloading || this.problem()) {
       return;
     }
     const second = Math.floor(element.currentTime);
@@ -254,36 +257,20 @@ export class Player {
       }
       const player = new shaka.Player();
       this.player = player;
+      this.reloadedAt = [];
       await player.attach(element);
       // Auto quality stays at the player's size: no 4K for a phone screen.
       // Audio starts in the original language, not an AI dub matching the browser's language.
       player.configure({
-        streaming: { bufferingGoal: bufferSeconds() },
+        streaming: { bufferingGoal: bufferSeconds(), retryParameters: patientRetries },
+        manifest: { retryParameters: patientRetries },
         abr: { restrictToElementSize: true },
         preferredAudio: [{ role: 'main' }],
       });
-      await player.load(manifestUrl(video), startAt || null);
-      if (isCancelled()) {
-        return;
-      }
-      const original = originalAudioTrack(player.getAudioTracks());
-      if (original && !original.active) {
-        player.selectAudioTrack(original);
-      }
-      this.textTracks = await Promise.all(
-        video.captions.map((caption) =>
-          player.addTextTrackAsync(caption.url, caption.language_code, 'subtitles', 'text/vtt', undefined, caption.label),
-        ),
+      player.addEventListener('error', (event) =>
+        this.recover(player, video, (event as unknown as { detail: { severity: number } }).detail, isCancelled),
       );
-      player.selectTextTrack(null);
-      this.captions.set(video.captions.map((caption) => ({ label: caption.label })));
-      const qualities = qualitiesOf(player.getVariantTracks());
-      this.qualities.set(qualities);
-      // A quality chosen before replaces Auto, or the closest this video has.
-      const wanted = savedQuality();
-      if (wanted !== autoQuality) {
-        this.applyQuality(closestQuality(qualities, wanted) ?? autoQuality);
-      }
+      await this.load(player, video, startAt, savedQuality());
     } catch {
       if (isCancelled()) {
         return;
@@ -296,6 +283,62 @@ export class Player {
       }
     }
   }
+
+  /** Loads the video into the player at `startAt`, then sets up audio, captions and quality. */
+  private async load(player: ShakaPlayer, video: Video, startAt: number, wantedQuality: number): Promise<void> {
+    await player.load(manifestUrl(video), startAt || null);
+    const original = originalAudioTrack(player.getAudioTracks());
+    if (original && !original.active) {
+      player.selectAudioTrack(original);
+    }
+    this.textTracks = await Promise.all(
+      video.captions.map((caption) =>
+        player.addTextTrackAsync(caption.url, caption.language_code, 'subtitles', 'text/vtt', undefined, caption.label),
+      ),
+    );
+    player.selectTextTrack(this.textTracks[this.caption()] ?? null);
+    this.captions.set(video.captions.map((caption) => ({ label: caption.label })));
+    const qualities = qualitiesOf(player.getVariantTracks());
+    this.qualities.set(qualities);
+    // A chosen quality replaces Auto, or the closest this video has.
+    if (wantedQuality !== autoQuality) {
+      this.applyQuality(closestQuality(qualities, wantedQuality) ?? autoQuality);
+    }
+  }
+
+  /**
+   * A request that still fails after the player's own retries stops playback (Companion answers 500
+   * or 503 at times). The video is then loaded again with fresh links where it stopped, at most a few
+   * times a minute, so a lasting fault ends with a message instead of a loop of requests.
+   */
+  private async recover(player: ShakaPlayer, video: Video, error: { severity: number }, isCancelled: () => boolean) {
+    if (error.severity !== criticalError || isCancelled() || this.player !== player) {
+      return;
+    }
+    const now = Date.now();
+    this.reloadedAt = this.reloadedAt.filter((time) => now - time < 60_000);
+    if (this.reloadedAt.length >= maxReloadsPerMinute) {
+      this.problem.set('This video keeps failing to load. Try again in a moment.');
+      return;
+    }
+    this.reloadedAt.push(now);
+    const element = this.element().nativeElement;
+    const resumeAt = element.currentTime;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    if (isCancelled() || this.player !== player) {
+      return;
+    }
+    this.reloading = true;
+    try {
+      await this.load(player, video, resumeAt, this.quality());
+      element.play().catch(() => undefined);
+    } catch (reloadError) {
+      this.recover(player, video, reloadError as { severity: number }, isCancelled);
+    } finally {
+      this.reloading = false;
+    }
+  }
+
 }
 
 function keyAction(key: string, state: VideoState, player: Player): (() => void) | null {
@@ -368,11 +411,27 @@ function playFile(video: Video, element: HTMLVideoElement, startAt: number): boo
   return true;
 }
 
+// shaka's own default gives up after two tries a second apart; a busy Companion needs longer.
+const patientRetries = { maxAttempts: 5, baseDelay: 1000, backoffFactor: 2, fuzzFactor: 0.5, timeout: 30_000 };
+// shaka.util.Error.Severity.CRITICAL: playback has stopped.
+const criticalError = 2;
+const maxReloadsPerMinute = 3;
+
 function bufferSeconds(): number {
   return document.hidden ? 180 : 30;
 }
 
-const mediaSessionActions: MediaSessionAction[] = ['play', 'pause', 'seekbackward', 'seekforward', 'seekto'];
+// Android often shows only "previous" and "next" on the lock screen; here they jump back and forward.
+const mediaSessionActions: MediaSessionAction[] = [
+  'play',
+  'pause',
+  'seekbackward',
+  'seekforward',
+  'seekto',
+  'previoustrack',
+  'nexttrack',
+];
+const lockScreenJumpSeconds = 10;
 
 /**
  * Title, picture and buttons on the lock screen and in the notification shade. Without the buttons,
@@ -390,9 +449,11 @@ function setMediaSession(video: Video, state: VideoState): void {
   const handlers: Record<string, MediaSessionActionHandler> = {
     play: () => state.element.play().catch(() => undefined),
     pause: () => state.element.pause(),
-    seekbackward: (details) => state.seekBy(-(details.seekOffset ?? 10)),
-    seekforward: (details) => state.seekBy(details.seekOffset ?? 10),
+    seekbackward: (details) => state.seekBy(-(details.seekOffset ?? lockScreenJumpSeconds)),
+    seekforward: (details) => state.seekBy(details.seekOffset ?? lockScreenJumpSeconds),
     seekto: (details) => state.seekTo(details.seekTime ?? state.element.currentTime),
+    previoustrack: () => state.seekBy(-lockScreenJumpSeconds),
+    nexttrack: () => state.seekBy(lockScreenJumpSeconds),
   };
   for (const action of mediaSessionActions) {
     try {
