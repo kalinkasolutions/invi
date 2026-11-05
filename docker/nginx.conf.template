@@ -1,4 +1,4 @@
-# Rendered by the nginx image at start; only the ${INVIDIOUS_*} variables are filled in.
+# Rendered by the nginx image at start; only ${INVIDIOUS_*} and ${NGINX_LOCAL_RESOLVERS} are filled in.
 server {
     listen 8080;
     root /usr/share/nginx/html;
@@ -15,8 +15,12 @@ server {
     }
 
     # Everything Invidious serves, proxied so the app and its token stay on one origin.
+    # Through Docker's DNS and over IPv4 only: Invidious listens on IPv4 alone, so an IPv6 address
+    # for it is refused first. Looking the name up as it goes also follows a restarted container.
     location ~ ^/(api|companion|vi|ggpht|sb|videoplayback)(/|$) {
-        proxy_pass ${INVIDIOUS_URL};
+        resolver ${NGINX_LOCAL_RESOLVERS} ipv6=off valid=30s;
+        set $invidious ${INVIDIOUS_URL};
+        proxy_pass $invidious;
         proxy_set_header Host $proxy_host;
         proxy_ssl_server_name on;
         proxy_http_version 1.1;

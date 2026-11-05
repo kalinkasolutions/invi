@@ -33,6 +33,7 @@ type TextTrack = shakaNamespace.extern.TextTrack;
   host: {
     '(document:keydown)': 'onKey($event)',
     '(document:fullscreenchange)': 'onFullscreenChange()',
+    '(document:visibilitychange)': 'onVisibilityChange()',
   },
   template: `
     <video #video playsinline autoplay [poster]="poster()" (ended)="ended.emit()"
@@ -94,7 +95,10 @@ export class Player {
       this.caption.set(-1);
       this.frames.set([]);
       this.problem.set(null);
-      setMediaSession(video);
+      const state = untracked(this.state);
+      if (state) {
+        setMediaSession(video, state);
+      }
       this.play(video, element, requestedStart, () => cancelled);
       const storyboard = this.loadStoryboard(video.videoId);
 
@@ -111,6 +115,7 @@ export class Player {
       if (document.fullscreenElement === this.host) {
         document.exitFullscreen().catch(() => undefined);
       }
+      clearMediaSession();
     });
   }
 
@@ -194,6 +199,11 @@ export class Player {
     this.positions.remember(videoId, positionToKeep(element.currentTime, element.duration), now);
   }
 
+  // With the screen off, the browser runs the page's timers rarely; a longer buffer bridges the gaps.
+  protected onVisibilityChange(): void {
+    this.player?.configure({ streaming: { bufferingGoal: bufferSeconds() } });
+  }
+
   protected onFullscreenChange(): void {
     this.fullscreen.set(document.fullscreenElement === this.host);
   }
@@ -248,7 +258,7 @@ export class Player {
       // Auto quality stays at the player's size: no 4K for a phone screen.
       // Audio starts in the original language, not an AI dub matching the browser's language.
       player.configure({
-        streaming: { bufferingGoal: 30 },
+        streaming: { bufferingGoal: bufferSeconds() },
         abr: { restrictToElementSize: true },
         preferredAudio: [{ role: 'main' }],
       });
@@ -358,8 +368,17 @@ function playFile(video: Video, element: HTMLVideoElement, startAt: number): boo
   return true;
 }
 
-/** Title and picture on the lock screen and in the notification shade. */
-function setMediaSession(video: Video): void {
+function bufferSeconds(): number {
+  return document.hidden ? 180 : 30;
+}
+
+const mediaSessionActions: MediaSessionAction[] = ['play', 'pause', 'seekbackward', 'seekforward', 'seekto'];
+
+/**
+ * Title, picture and buttons on the lock screen and in the notification shade. Without the buttons,
+ * playback that the phone paused (a notification sound, a call) can't be resumed from there.
+ */
+function setMediaSession(video: Video, state: VideoState): void {
   if (!('mediaSession' in navigator)) {
     return;
   }
@@ -368,4 +387,32 @@ function setMediaSession(video: Video): void {
     artist: video.author,
     artwork: [{ src: new URL(videoThumbnail(video.videoId, 'hq'), location.origin).href }],
   });
+  const handlers: Record<string, MediaSessionActionHandler> = {
+    play: () => state.element.play().catch(() => undefined),
+    pause: () => state.element.pause(),
+    seekbackward: (details) => state.seekBy(-(details.seekOffset ?? 10)),
+    seekforward: (details) => state.seekBy(details.seekOffset ?? 10),
+    seekto: (details) => state.seekTo(details.seekTime ?? state.element.currentTime),
+  };
+  for (const action of mediaSessionActions) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handlers[action]);
+    } catch {
+      // Older browsers don't know every action.
+    }
+  }
+}
+
+function clearMediaSession(): void {
+  if (!('mediaSession' in navigator)) {
+    return;
+  }
+  navigator.mediaSession.metadata = null;
+  for (const action of mediaSessionActions) {
+    try {
+      navigator.mediaSession.setActionHandler(action, null);
+    } catch {
+      // See setMediaSession.
+    }
+  }
 }

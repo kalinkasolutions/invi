@@ -12,6 +12,8 @@ USER nginx
 # INVIDIOUS_URL: where this container reaches Invidious.
 # INVIDIOUS_PUBLIC_URL: where the user's browser reaches Invidious, for sign-in.
 ENV INVIDIOUS_URL=http://invidious:3000
+# Hands the container's DNS server to the nginx template (see docker/nginx.conf.template).
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 COPY --chmod=755 docker/check-settings.sh /docker-entrypoint.d/05-check-settings.sh
 COPY --chmod=755 docker/start-positions-server.sh /docker-entrypoint.d/40-start-positions-server.sh
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
