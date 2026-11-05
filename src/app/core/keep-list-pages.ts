@@ -1,0 +1,66 @@
+import { ComponentRef, inject, Injectable, Injector } from '@angular/core';
+import { ActivatedRouteSnapshot, DetachedRouteHandle, Router, RouteReuseStrategy } from '@angular/router';
+
+/** Route data marking a list page that comes back as it was (loaded videos, scroll position) on "back". */
+export const keptOnBack = { keepOnBack: true };
+
+const maxKeptPages = 5;
+
+/**
+ * Keeps the last few list pages alive when leaving them. Going back or forward puts the kept page
+ * back, so its videos are there at once and the browser's scroll position fits again; any other
+ * way to the page builds it fresh.
+ */
+@Injectable({ providedIn: 'root' })
+export class KeepListPages implements RouteReuseStrategy {
+  // The router itself needs this strategy, so it is looked up only when used.
+  private readonly injector = inject(Injector);
+  private readonly kept = new Map<string, DetachedRouteHandle>();
+
+  shouldDetach(route: ActivatedRouteSnapshot): boolean {
+    return isKeptOnBack(route);
+  }
+
+  store(route: ActivatedRouteSnapshot, handle: DetachedRouteHandle | null): void {
+    const key = pageKey(route);
+    this.forget(key);
+    if (handle) {
+      this.kept.set(key, handle);
+      const oldest = this.kept.keys().next().value;
+      if (this.kept.size > maxKeptPages && oldest !== undefined) {
+        this.forget(oldest);
+      }
+    }
+  }
+
+  shouldAttach(route: ActivatedRouteSnapshot): boolean {
+    const throughHistory = this.injector.get(Router).currentNavigation()?.trigger === 'popstate';
+    return isKeptOnBack(route) && throughHistory && this.kept.has(pageKey(route));
+  }
+
+  retrieve(route: ActivatedRouteSnapshot): DetachedRouteHandle | null {
+    return isKeptOnBack(route) ? (this.kept.get(pageKey(route)) ?? null) : null;
+  }
+
+  shouldReuseRoute(future: ActivatedRouteSnapshot, current: ActivatedRouteSnapshot): boolean {
+    return future.routeConfig === current.routeConfig;
+  }
+
+  private forget(key: string): void {
+    const handle = this.kept.get(key) as { componentRef?: ComponentRef<unknown> } | undefined;
+    // A dropped page has to be destroyed by hand, or it would stay in memory.
+    handle?.componentRef?.destroy();
+    this.kept.delete(key);
+  }
+}
+
+function isKeptOnBack(route: ActivatedRouteSnapshot): boolean {
+  return route.routeConfig?.data?.['keepOnBack'] === true;
+}
+
+/** The page's full address: /results?search_query=a and ?search_query=b are different pages. */
+export function pageKey(route: ActivatedRouteSnapshot): string {
+  const path = route.pathFromRoot.flatMap((part) => part.url.map((segment) => segment.path)).join('/');
+  const query = new URLSearchParams(route.queryParams as Record<string, string>).toString();
+  return `/${path}?${query}`;
+}
