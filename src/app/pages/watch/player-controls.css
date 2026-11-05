@@ -238,3 +238,30 @@ button {
     display: block;
   }
 }
+
+/* "+10" on the side that was tapped, fading out. */
+.jump {
+  position: absolute;
+  top: 50%;
+  right: 12%;
+  padding: .5rem 1rem;
+  border-radius: 2rem;
+  background: rgb(0 0 0 / .55);
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  animation: jump-shown .8s ease-out forwards;
+}
+
+.jump.back {
+  right: auto;
+  left: 12%;
+}
+
+@keyframes jump-shown {
+  0% { opacity: 0; transform: translateY(-50%) scale(.8); }
+  15% { opacity: 1; transform: translateY(-50%) scale(1); }
+  70% { opacity: 1; transform: translateY(-50%) scale(1); }
+  100% { opacity: 0; transform: translateY(-50%) scale(1); }
+}

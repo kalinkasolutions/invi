@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { Icon } from '../../shared/icon';
 import { formatDuration } from '../../shared/format';
+import { jumpSeconds, tapZone, TapZone } from './jumps';
 import { frameAt, StoryboardFrame } from './storyboard';
 import { speeds, VideoState } from './video-state';
 
@@ -23,9 +24,18 @@ export interface CaptionChoice {
 
 type Menu = 'settings' | 'captions' | null;
 
+type Direction = 1 | -1;
+
+interface JumpShown {
+  id: number;
+  direction: Direction;
+  text: string;
+}
+
 const hideAfterMs = 2500;
 const doubleTapMs = 300;
-const skipSeconds = 5;
+// Taps this close after a jump, on the same side, jump again and further.
+const jumpSeriesMs = 800;
 
 /** The player's own controls: a timeline with preview thumbnails, and the buttons below it. */
 @Component({
@@ -65,6 +75,15 @@ export class PlayerControls {
   private hideTimer?: ReturnType<typeof setTimeout>;
   private tapTimer?: ReturnType<typeof setTimeout>;
   private lastPointerType = '';
+  private jumpSeries: { direction: Direction; count: number; at: number } | null = null;
+  private jumpShownTimer?: ReturnType<typeof setTimeout>;
+  private jumpId = 0;
+  private readonly jumpShown = signal<JumpShown | null>(null);
+  // A list of one, so each jump gets a fresh element and its fade starts over.
+  protected readonly jumpsShown = computed(() => {
+    const shown = this.jumpShown();
+    return shown ? [shown] : [];
+  });
 
   // Paused, scrubbing, pointed at or with a menu open, the controls stay; while playing they fade after a while.
   protected readonly visible = computed(
@@ -105,6 +124,7 @@ export class PlayerControls {
     inject(DestroyRef).onDestroy(() => {
       clearTimeout(this.hideTimer);
       clearTimeout(this.tapTimer);
+      clearTimeout(this.jumpShownTimer);
     });
   }
 
@@ -121,7 +141,11 @@ export class PlayerControls {
     }
   }
 
-  /** A click plays or pauses; on touch a tap shows or hides the controls. For double taps see onDoubleTap. */
+  /**
+   * A tap or click plays or pauses. A double tap jumps (left and right third) or goes full screen
+   * (middle third); taps right after a jump keep jumping. A single tap waits to see whether a second
+   * one follows; a mouse has dblclick for that, so a click acts at once.
+   */
   protected onSurfaceTap(event: PointerEvent): void {
     this.lastPointerType = event.pointerType;
     if (this.menu()) {
@@ -133,20 +157,21 @@ export class PlayerControls {
       this.reveal();
       return;
     }
+    const zone = tapZone(event.offsetX, this.host.clientWidth);
+    if (this.continuesJumps(zone)) {
+      this.jump(zone);
+      return;
+    }
     if (this.tapTimer) {
       clearTimeout(this.tapTimer);
       this.tapTimer = undefined;
-      this.onDoubleTap(event);
+      this.onDoubleTap(zone);
       return;
     }
     this.tapTimer = setTimeout(() => {
       this.tapTimer = undefined;
-      if (this.visible()) {
-        clearTimeout(this.hideTimer);
-        this.shownByUser.set(false);
-      } else {
-        this.reveal();
-      }
+      this.state().togglePlay();
+      this.reveal();
     }, doubleTapMs);
   }
 
@@ -222,22 +247,38 @@ export class PlayerControls {
   // Phones fire dblclick after a double tap too; that one was already handled in onSurfaceTap.
   protected onDoubleClick(event: MouseEvent): void {
     if (this.lastPointerType === 'mouse') {
-      this.onDoubleTap(event);
+      this.onDoubleTap(tapZone(event.offsetX, this.host.clientWidth));
     }
   }
 
-  /** Left third: back 5 seconds. Middle third: full screen. Right third: forward 5 seconds. */
-  private onDoubleTap(event: MouseEvent): void {
-    const position = event.offsetX / this.host.clientWidth;
-    if (position < 1 / 3) {
-      this.state().seekBy(-skipSeconds);
-    } else if (position > 2 / 3) {
-      this.state().seekBy(skipSeconds);
-    } else {
+  private onDoubleTap(zone: TapZone): void {
+    if (zone === 'middle') {
       this.fullscreenToggle.emit();
-      return;
+    } else {
+      this.jump(zone);
     }
-    this.reveal();
+  }
+
+  private continuesJumps(zone: TapZone): zone is Exclude<TapZone, 'middle'> {
+    const series = this.jumpSeries;
+    return (
+      series !== null &&
+      zone !== 'middle' &&
+      directionOf(zone) === series.direction &&
+      Date.now() - series.at < jumpSeriesMs
+    );
+  }
+
+  /** 5, 10, 15, 20, then 30 seconds for each jump in a row; the amount shows on that side. */
+  private jump(zone: Exclude<TapZone, 'middle'>): void {
+    const direction = directionOf(zone);
+    const count = this.continuesJumps(zone) ? this.jumpSeries!.count + 1 : 1;
+    this.jumpSeries = { direction, count, at: Date.now() };
+    const seconds = jumpSeconds(count);
+    this.state().seekBy(direction * seconds);
+    this.jumpShown.set({ id: ++this.jumpId, direction, text: `${direction > 0 ? '+' : '−'}${seconds}` });
+    clearTimeout(this.jumpShownTimer);
+    this.jumpShownTimer = setTimeout(() => this.jumpShown.set(null), jumpSeriesMs);
   }
 
   private timeAt(event: PointerEvent): number {
@@ -246,6 +287,10 @@ export class PlayerControls {
     this.hoverX.set(event.clientX - this.host.getBoundingClientRect().left);
     return fraction * this.state().duration();
   }
+}
+
+function directionOf(zone: TapZone): Direction {
+  return zone === 'back' ? -1 : 1;
 }
 
 function percentOf(part: number, whole: number): number {

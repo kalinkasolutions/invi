@@ -1,5 +1,9 @@
 <div class="surface" (pointerup)="onSurfaceTap($event)" (dblclick)="onDoubleClick($event)"></div>
 
+@for (jump of jumpsShown(); track jump.id) {
+  <div class="jump" [class.back]="jump.direction < 0" aria-live="polite">{{ jump.text }}</div>
+}
+
 @if (state().waiting()) {
   <div class="spinner" role="status" aria-label="Loading"></div>
 } @else if (!state().playing()) {
