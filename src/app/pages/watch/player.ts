@@ -261,11 +261,13 @@ export class Player {
       await player.attach(element);
       // Auto quality stays at the player's size: no 4K for a phone screen.
       // Audio starts in the original language, not an AI dub matching the browser's language.
+      // Of H.264 and AV1, the codec the device decodes smoothly in hardware, not just the smaller one.
       player.configure({
         streaming: { bufferingGoal: bufferSeconds(), retryParameters: patientRetries },
         manifest: { retryParameters: patientRetries },
         abr: { restrictToElementSize: true },
         preferredAudio: [{ role: 'main' }],
+        preferredDecodingAttributes: ['smooth', 'powerEfficient'],
       });
       player.addEventListener('error', (event) =>
         this.recover(player, video, (event as unknown as { detail: { severity: number } }).detail, isCancelled),
