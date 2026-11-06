@@ -18,21 +18,14 @@
   background: var(--surface-strong);
 }
 
-:host(:not(.row)) .thumbnail {
-  margin-inline: calc(-1 * var(--gutter));
-}
-
 :host(.row) .thumbnail {
   flex: 0 0 42%;
   max-width: 11rem;
   border-radius: var(--radius-small);
 }
 
-@media (min-width: 640px) {
-  :host(:not(.row)) .thumbnail {
-    margin-inline: 0;
-    border-radius: var(--radius);
-  }
+:host(:not(.row)) .thumbnail {
+  border-radius: var(--radius);
 }
 
 /* hqdefault is 4:3 with black bars; cover crops them away. */
