@@ -286,7 +286,7 @@ export class Player {
 
   /** Loads the video into the player at `startAt`, then sets up audio, captions and quality. */
   private async load(player: ShakaPlayer, video: Video, startAt: number, wantedQuality: number): Promise<void> {
-    await player.load(manifestUrl(video), startAt || null);
+    await player.load(manifestUrl(video), startAt || null, manifestType(video));
     const original = originalAudioTrack(player.getAudioTracks());
     if (original && !original.active) {
       player.selectAudioTrack(original);
@@ -398,6 +398,11 @@ function manifestUrl(video: Video): string {
   return video.hlsUrl
     ? video.hlsUrl
     : `/api/manifest/dash/id/${video.videoId}?local=true&unique_res=1`;
+}
+
+// Said up front, or the player asks the server with an extra HEAD request: the URL has no extension.
+function manifestType(video: Video): string {
+  return video.hlsUrl ? 'application/x-mpegurl' : 'application/dash+xml';
 }
 
 function playFile(video: Video, element: HTMLVideoElement, startAt: number): boolean {

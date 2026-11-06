@@ -15,7 +15,7 @@ const askServerForMs = 1500;
 export class WatchPositions {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(Auth);
-  private readonly lastSent = new Map<string, number>();
+  private readonly lastSent = new Map<string, { at: number; seconds: number | null }>();
 
   async startOf(videoId: string): Promise<number> {
     const local = Number(readStored(localKey(videoId)) ?? 0);
@@ -36,11 +36,14 @@ export class WatchPositions {
     if (!this.auth.signedIn()) {
       return;
     }
-    const sentAt = this.lastSent.get(videoId) ?? 0;
-    if (!now && seconds !== null && Date.now() - sentAt < sendEveryMs) {
+    const last = this.lastSent.get(videoId);
+    if (last && last.seconds === seconds) {
       return;
     }
-    this.lastSent.set(videoId, Date.now());
+    if (last && !now && Date.now() - last.at < sendEveryMs) {
+      return;
+    }
+    this.lastSent.set(videoId, { at: Date.now(), seconds });
     // keepalive lets the last position out even when the page is being left.
     this.http.put(serverUrl(videoId), { seconds }, { keepalive: true }).subscribe({ error: () => undefined });
   }
