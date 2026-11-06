@@ -39,7 +39,7 @@
     <button [attr.aria-label]="state().playing() ? 'Pause' : 'Play'" (click)="state().togglePlay()">
       <app-icon [name]="state().playing() ? 'pause' : 'play'" />
     </button>
-    <button [attr.aria-label]="state().muted() ? 'Unmute' : 'Mute'" (click)="state().toggleMute()">
+    <button class="mute" [attr.aria-label]="state().muted() ? 'Unmute' : 'Mute'" (click)="state().toggleMute()">
       <app-icon [name]="state().muted() || state().volume() === 0 ? 'muted' : 'volume'" />
     </button>
     <input class="volume" type="range" min="0" max="1" step="0.05" aria-label="Volume"
