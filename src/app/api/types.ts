@@ -10,6 +10,7 @@ export interface VideoItem {
   title: string;
   author: string;
   authorId: string;
+  authorThumbnails?: Image[];
   lengthSeconds?: number;
   viewCount?: number;
   viewCountText?: string;

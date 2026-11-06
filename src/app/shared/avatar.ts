@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
+import { initialsOf } from './format';
 
-/** A round channel picture; shows the first letter of the name when there is none or it fails to load. */
+/** A round channel picture; shows the name's initials when there is none or it fails to load. */
 @Component({
   selector: 'app-avatar',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -8,13 +9,14 @@ import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } fro
     @if (showImage()) {
       <img [src]="src()" alt="" loading="lazy" (error)="failed.set(true)" />
     } @else {
-      <span>{{ initial() }}</span>
+      <span>{{ initials() }}</span>
     }
   `,
   styles: `
     :host { display: inline-grid; place-items: center; flex: none; width: var(--size, 2.25rem);
             height: var(--size, 2.25rem); border-radius: 50%; overflow: hidden;
-            background: var(--surface-strong); color: var(--text-muted); font-weight: 600; }
+            background: var(--surface-strong); color: var(--text-muted); font-weight: 600;
+            font-size: calc(var(--size, 2.25rem) * .38); }
     img { width: 100%; height: 100%; object-fit: cover; }
   `,
 })
@@ -24,5 +26,5 @@ export class Avatar {
 
   protected readonly failed = linkedSignal({ source: this.src, computation: () => false });
   protected readonly showImage = computed(() => !!this.src() && !this.failed());
-  protected readonly initial = computed(() => this.name().replace(/^@/, '').charAt(0).toUpperCase());
+  protected readonly initials = computed(() => initialsOf(this.name()));
 }

@@ -33,3 +33,30 @@ export function parseTimestamp(value: string | null | undefined): number {
 export function joinNonEmpty(parts: (string | undefined)[], separator = ' · '): string {
   return parts.filter((part) => !!part).join(separator);
 }
+
+const shortUnits: Record<string, string> = {
+  second: 's',
+  minute: 'min',
+  hour: 'h',
+  day: 'd',
+  week: 'w',
+  month: 'mo',
+  year: 'y',
+};
+
+/** "1 hour ago" → "1h ago", as YouTube writes it under videos. Anything else stays as it is. */
+export function shortAgo(text: string | undefined): string | undefined {
+  const parts = text?.match(/^(\d+) (second|minute|hour|day|week|month|year)s? ago$/);
+  return parts ? `${parts[1]}${shortUnits[parts[2]]} ago` : text;
+}
+
+/** Up to two initials for a picture-less channel: "Soft White Underbelly" → "SW". */
+export function initialsOf(name: string): string {
+  return name
+    .replace(/^@/, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => [...word][0].toUpperCase())
+    .join('');
+}
