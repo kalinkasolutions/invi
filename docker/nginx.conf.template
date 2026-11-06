@@ -15,6 +15,22 @@ server {
     }
 
     # Everything Invidious serves, proxied so the app and its token stay on one origin.
+    # Channel pictures and banners straight from Google's image server, as Invidious' /ggpht/ would:
+    # since Invidious v2.20261103.0 its "/:user/:tab" route catches most of them
+    # (https://github.com/iv-org/invidious/issues/6125). The browser still only talks to this server.
+    location ^~ /ggpht/ {
+        resolver ${NGINX_LOCAL_RESOLVERS} ipv6=off valid=300s;
+        set $ggpht https://yt3.ggpht.com;
+        rewrite ^/ggpht/(.*)$ /$1 break;
+        proxy_pass $ggpht;
+        proxy_set_header Host yt3.ggpht.com;
+        proxy_set_header Cookie "";
+        proxy_hide_header Set-Cookie;
+        proxy_ssl_server_name on;
+        proxy_ssl_name yt3.ggpht.com;
+        add_header Cache-Control "public, max-age=86400";
+    }
+
     # Through Docker's DNS and over IPv4 only: Invidious listens on IPv4 alone, so an IPv6 address
     # for it is refused first. Looking the name up as it goes also follows a restarted container.
     location ~ ^/(api|companion|vi|ggpht|sb|videoplayback)(/|$) {

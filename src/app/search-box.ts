@@ -4,6 +4,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, filter, of, switchMap } from 'rxjs';
 import { InvidiousApi } from './api/invidious-api';
 import { Icon } from './shared/icon';
+import { pageForTypedLink } from './shared/internal-links';
 
 @Component({
   selector: 'app-search-box',
@@ -67,9 +68,16 @@ export class SearchBox {
     if (!trimmed) {
       return;
     }
-    this.query.set(trimmed);
     this.suggestions.set([]);
     (document.activeElement as HTMLElement | null)?.blur();
+    // A pasted YouTube link opens its page; searching for the link's text finds nothing.
+    const linkedPage = pageForTypedLink(trimmed);
+    if (linkedPage) {
+      this.query.set('');
+      this.router.navigateByUrl(linkedPage);
+      return;
+    }
+    this.query.set(trimmed);
     this.router.navigate(['/results'], { queryParams: { search_query: trimmed } });
   }
 }

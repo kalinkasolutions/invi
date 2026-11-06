@@ -28,3 +28,14 @@ export function toInternalPath(href: string): string | null {
   }
   return appPaths.test(url.pathname) ? url.pathname + url.search : null;
 }
+
+const youtubeLinkStart = /^(https?:\/\/)?((www|m|music)\.)?(youtube\.com|youtu\.be)\//i;
+
+/** What was typed into the search box, when it is a YouTube link: the app's own page for it. */
+export function pageForTypedLink(typed: string): string | null {
+  const text = typed.trim();
+  if (!youtubeLinkStart.test(text)) {
+    return null;
+  }
+  return toInternalPath(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+}
