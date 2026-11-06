@@ -10,6 +10,9 @@ export class Subscriptions {
   private readonly auth = inject(Auth);
 
   readonly channels = signal<Subscription[]>([]);
+  /** The channel whose subscribe or unsubscribe just failed, for a moment. */
+  readonly failedChannel = signal<string | null>(null);
+  private failedTimer?: ReturnType<typeof setTimeout>;
   private readonly channelIds = computed(() => new Set(this.channels().map((channel) => channel.authorId)));
 
   constructor() {
@@ -28,12 +31,18 @@ export class Subscriptions {
 
   toggle(channel: Subscription): void {
     const before = this.channels();
+    const undo = () => {
+      this.channels.set(before);
+      this.failedChannel.set(channel.authorId);
+      clearTimeout(this.failedTimer);
+      this.failedTimer = setTimeout(() => this.failedChannel.set(null), 5000);
+    };
     if (this.isSubscribed(channel.authorId)) {
       this.channels.set(before.filter((existing) => existing.authorId !== channel.authorId));
-      this.api.unsubscribe(channel.authorId).subscribe({ error: () => this.channels.set(before) });
+      this.api.unsubscribe(channel.authorId).subscribe({ error: undo });
     } else {
       this.channels.set([...before, channel]);
-      this.api.subscribe(channel.authorId).subscribe({ error: () => this.channels.set(before) });
+      this.api.subscribe(channel.authorId).subscribe({ error: undo });
     }
   }
 }

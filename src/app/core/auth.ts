@@ -63,10 +63,24 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authorized = request.clone({ setHeaders: headers });
   return next(authorized).pipe(
     catchError((error) => {
-      if (error.status === 403 && error.error?.error !== 'Invalid scope') {
+      if (isTokenRejection(error.status, error.error?.error)) {
         auth.forget();
       }
       return throwError(() => error);
     }),
   );
 };
+
+// Invidious' messages for a token it won't take. Its token check wraps the whole request, so any
+// other failure (a channel YouTube won't describe, say) also comes back as 403 and must not sign out.
+const tokenRejections = [
+  'Erroneous token',
+  'Invalid signature',
+  'Request must be authenticated',
+  'Token is expired, please try again',
+  'Cannot use token as SID',
+];
+
+export function isTokenRejection(status: number, message: unknown): boolean {
+  return status === 403 && typeof message === 'string' && tokenRejections.includes(message);
+}
