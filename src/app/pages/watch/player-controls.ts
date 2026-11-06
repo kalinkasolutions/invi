@@ -74,7 +74,6 @@ export class PlayerControls {
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;
   private hideTimer?: ReturnType<typeof setTimeout>;
   private tapTimer?: ReturnType<typeof setTimeout>;
-  private lastPointerType = '';
   private jumpSeries: { direction: Direction; count: number; at: number } | null = null;
   private jumpShownTimer?: ReturnType<typeof setTimeout>;
   private jumpId = 0;
@@ -144,17 +143,11 @@ export class PlayerControls {
   /**
    * A tap or click plays or pauses. A double tap jumps (left and right third) or goes full screen
    * (middle third); taps right after a jump keep jumping. A single tap waits to see whether a second
-   * one follows; a mouse has dblclick for that, so a click acts at once.
+   * one follows, so a double tap never pauses the video on the way. Mouse clicks work the same.
    */
   protected onSurfaceTap(event: PointerEvent): void {
-    this.lastPointerType = event.pointerType;
     if (this.menu()) {
       this.menu.set(null);
-      return;
-    }
-    if (event.pointerType === 'mouse') {
-      this.state().togglePlay();
-      this.reveal();
       return;
     }
     const zone = tapZone(event.offsetX, this.host.clientWidth);
@@ -242,13 +235,6 @@ export class PlayerControls {
 
   protected setVolume(event: Event): void {
     this.state().setVolume(Number((event.target as HTMLInputElement).value));
-  }
-
-  // Phones fire dblclick after a double tap too; that one was already handled in onSurfaceTap.
-  protected onDoubleClick(event: MouseEvent): void {
-    if (this.lastPointerType === 'mouse') {
-      this.onDoubleTap(tapZone(event.offsetX, this.host.clientWidth));
-    }
   }
 
   private onDoubleTap(zone: TapZone): void {

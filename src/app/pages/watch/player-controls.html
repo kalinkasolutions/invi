@@ -1,4 +1,4 @@
-<div class="surface" (pointerup)="onSurfaceTap($event)" (dblclick)="onDoubleClick($event)"></div>
+<div class="surface" (pointerup)="onSurfaceTap($event)"></div>
 
 @for (jump of jumpsShown(); track jump.id) {
   <div class="jump" [class.back]="jump.direction < 0" aria-live="polite">{{ jump.text }}</div>
