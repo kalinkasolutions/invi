@@ -17,7 +17,7 @@ ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 COPY --chmod=755 docker/check-settings.sh /docker-entrypoint.d/05-check-settings.sh
 COPY --chmod=755 docker/start-positions-server.sh /docker-entrypoint.d/40-start-positions-server.sh
 COPY docker/nginx.conf.template /etc/nginx/templates/default.conf.template
-COPY server/main.mjs server/positions.mjs /app/server/
+COPY server/main.mjs server/positions.mjs server/channel-avatars.mjs server/json-file.mjs /app/server/
 # Watch positions; give it a volume so they survive a new container.
 VOLUME /data
 COPY --from=build /app/dist/invi/browser /usr/share/nginx/html

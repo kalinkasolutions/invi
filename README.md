@@ -25,6 +25,9 @@ It runs as one extra container next to Invidious and uses Invidious' own `/api/v
    positions per user in `/data/positions.json`, behind `/invi-api/`. It accepts a request when
    Invidious accepts its token. Invidious can't say whose token it is, so the username comes from
    sign-in: on a shared Invidious, one signed-in user could write another's positions.
+   It also looks up channel pictures for lists that come without them (the subscription feed),
+   once for everyone, and keeps them 30 days in `/data/channel-avatars.json`. nginx keeps the
+   pictures themselves for 30 days.
 5. Sign-in uses Invidious' token flow. The app sends you to `INVIDIOUS_PUBLIC_URL/authorize_token`.
    You sign in there and allow a token with a few scopes. Invidious sends you back to
    `/auth/callback`, and the token is kept in the browser.

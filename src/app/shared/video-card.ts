@@ -48,8 +48,11 @@ export class VideoCard {
     videoThumbnail(this.video().videoId, this.layout() === 'row' ? 'mq' : 'hq'),
   );
   protected readonly duration = computed(() => formatDuration(this.video().lengthSeconds));
-  // The subscription feed carries no channel pictures; the avatar then shows the initials.
-  protected readonly authorAvatar = computed(() => largestImage(this.video().authorThumbnails));
+  // The subscription feed carries no channel pictures; this app's server looks them up once for
+  // everyone and redirects to the picture. Should it have none, the avatar shows initials.
+  protected readonly authorAvatar = computed(
+    () => largestImage(this.video().authorThumbnails) || `/invi-api/channel-avatar/${this.video().authorId}`,
+  );
   protected readonly watchParams = computed(() => ({ v: this.video().videoId, list: this.playlistId() }));
   protected readonly details = computed(() => {
     const video = this.video();

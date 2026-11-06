@@ -1,4 +1,7 @@
 # Rendered by the nginx image at start; only ${INVIDIOUS_*} and ${NGINX_LOCAL_RESOLVERS} are filled in.
+# Channel pictures, kept here once fetched (see the /ggpht/ location below).
+proxy_cache_path /var/cache/nginx/images levels=1:2 keys_zone=images:10m max_size=300m inactive=30d use_temp_path=off;
+
 server {
     listen 8080;
     root /usr/share/nginx/html;
@@ -9,7 +12,7 @@ server {
         return 200 '{ "invidiousUrl": "${INVIDIOUS_PUBLIC_URL}" }';
     }
 
-    # Watch positions, kept by the small server in this container (server/main.mjs).
+    # Watch positions and channel pictures, from the small server in this container (server/main.mjs).
     location /invi-api/ {
         proxy_pass http://127.0.0.1:8081;
     }
@@ -28,7 +31,13 @@ server {
         proxy_hide_header Set-Cookie;
         proxy_ssl_server_name on;
         proxy_ssl_name yt3.ggpht.com;
+        proxy_cache images;
+        proxy_cache_valid 200 30d;
+        proxy_cache_valid 404 1h;
+        proxy_cache_lock on;
+        proxy_ignore_headers Cache-Control Expires Set-Cookie Vary;
         add_header Cache-Control "public, max-age=86400";
+        add_header X-Cache $upstream_cache_status;
     }
 
     # Through Docker's DNS and over IPv4 only: Invidious listens on IPv4 alone, so an IPv6 address
