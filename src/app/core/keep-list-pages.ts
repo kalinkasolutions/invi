@@ -21,15 +21,22 @@ export class KeepListPages implements RouteReuseStrategy {
     return isKeptOnBack(route);
   }
 
+  // The router calls this with null right after putting a kept page back: from then on that page is
+  // in use again, so it is only let go of here, never destroyed.
   store(route: ActivatedRouteSnapshot, handle: DetachedRouteHandle | null): void {
     const key = pageKey(route);
-    this.forget(key);
-    if (handle) {
-      this.kept.set(key, handle);
-      const oldest = this.kept.keys().next().value;
-      if (this.kept.size > maxKeptPages && oldest !== undefined) {
-        this.forget(oldest);
-      }
+    if (!handle) {
+      this.kept.delete(key);
+      return;
+    }
+    if (this.kept.get(key) !== handle) {
+      this.destroy(key);
+    }
+    this.kept.delete(key);
+    this.kept.set(key, handle);
+    const oldest = this.kept.keys().next().value;
+    if (this.kept.size > maxKeptPages && oldest !== undefined) {
+      this.destroy(oldest);
     }
   }
 
@@ -46,9 +53,9 @@ export class KeepListPages implements RouteReuseStrategy {
     return future.routeConfig === current.routeConfig;
   }
 
-  private forget(key: string): void {
+  /** For a kept page that won't come back: it has to be destroyed by hand, or it stays in memory. */
+  private destroy(key: string): void {
     const handle = this.kept.get(key) as { componentRef?: ComponentRef<unknown> } | undefined;
-    // A dropped page has to be destroyed by hand, or it would stay in memory.
     handle?.componentRef?.destroy();
     this.kept.delete(key);
   }
