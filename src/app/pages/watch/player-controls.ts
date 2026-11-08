@@ -40,7 +40,10 @@ const jumpSeriesMs = 800;
 const noticeMs = 1500;
 // Roughly the context menu's size, so it opens inside the player even near its edges.
 const contextMenuWidth = 230;
-const contextMenuHeight = 90;
+const contextMenuHeight = 130;
+const longPressMs = 500;
+// A finger moving further than this is scrolling or swiping, not pressing.
+const longPressSlopPx = 10;
 
 /** The player's own controls: a timeline with preview thumbnails, and the buttons below it. */
 @Component({
@@ -90,6 +93,7 @@ export class PlayerControls {
   private jumpSeries: { direction: Direction; count: number; at: number } | null = null;
   private jumpShownTimer?: ReturnType<typeof setTimeout>;
   private noticeTimer?: ReturnType<typeof setTimeout>;
+  private longPress?: { timer: ReturnType<typeof setTimeout>; x: number; y: number };
   private jumpId = 0;
   private readonly jumpShown = signal<JumpShown | null>(null);
   // A list of one, so each jump gets a fresh element and its fade starts over.
@@ -140,6 +144,7 @@ export class PlayerControls {
       clearTimeout(this.tapTimer);
       clearTimeout(this.jumpShownTimer);
       clearTimeout(this.noticeTimer);
+      this.cancelLongPress();
     });
   }
 
@@ -162,6 +167,7 @@ export class PlayerControls {
    * one follows, so a double tap never pauses the video on the way. Mouse clicks work the same.
    */
   protected onSurfaceTap(event: PointerEvent): void {
+    this.cancelLongPress();
     if (event.button !== 0 || this.contextMenuOpenedThisPress) {
       return;
     }
@@ -241,16 +247,48 @@ export class PlayerControls {
     }
   }
 
-  /** Our own menu in place of the browser's, at the pointer but kept inside the player. */
-  protected openContextMenu(event: MouseEvent): void {
+  /** Touch has its own long-press timer: iPhones never send a contextmenu event. */
+  protected onSurfacePress(event: PointerEvent): void {
+    this.contextMenuOpenedThisPress = false;
+    this.cancelLongPress();
+    if (event.pointerType === 'touch') {
+      const { clientX: x, clientY: y } = event;
+      this.longPress = { x, y, timer: setTimeout(() => this.openContextMenu(x, y), longPressMs) };
+    }
+  }
+
+  protected onSurfacePressMove(event: PointerEvent): void {
+    const press = this.longPress;
+    if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > longPressSlopPx) {
+      this.cancelLongPress();
+    }
+  }
+
+  protected cancelLongPress(): void {
+    clearTimeout(this.longPress?.timer);
+    this.longPress = undefined;
+  }
+
+  protected onContextMenu(event: MouseEvent): void {
     event.preventDefault();
+    this.openContextMenu(event.clientX, event.clientY);
+  }
+
+  /** Our own menu in place of the browser's, at the pointer but kept inside the player. */
+  private openContextMenu(clientX: number, clientY: number): void {
+    this.cancelLongPress();
     this.contextMenuOpenedThisPress = true;
     const box = this.host.getBoundingClientRect();
     this.menu.set(null);
     this.contextMenuAt.set({
-      left: Math.max(Math.min(event.clientX - box.left, box.width - contextMenuWidth), 0),
-      top: Math.max(Math.min(event.clientY - box.top, box.height - contextMenuHeight), 0),
+      left: Math.max(Math.min(clientX - box.left, box.width - contextMenuWidth), 0),
+      top: Math.max(Math.min(clientY - box.top, box.height - contextMenuHeight), 0),
     });
+  }
+
+  protected toggleLoop(): void {
+    this.state().setLoop(!this.state().loop());
+    this.contextMenuAt.set(null);
   }
 
   protected copyLink(atCurrentTime: boolean): void {

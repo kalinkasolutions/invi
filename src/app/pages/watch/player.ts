@@ -101,6 +101,8 @@ export class Player {
       this.problem.set(null);
       const state = untracked(this.state);
       if (state) {
+        // Looping is for the one video; the next one plays normally again.
+        state.setLoop(false);
         setMediaSession(video, state);
       }
       this.play(video, element, requestedStart, () => cancelled);

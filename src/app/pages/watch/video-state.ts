@@ -14,6 +14,7 @@ export class VideoState {
   readonly volume = signal(1);
   readonly muted = signal(false);
   readonly speed = signal(1);
+  readonly loop = signal(false);
 
   private readonly stopListening: () => void;
 
@@ -57,6 +58,11 @@ export class VideoState {
 
   toggleMute(): void {
     this.element.muted = !this.element.muted;
+  }
+
+  setLoop(on: boolean): void {
+    this.element.loop = on;
+    this.loop.set(on);
   }
 
   setSpeed(speed: number): void {

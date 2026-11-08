@@ -1,11 +1,15 @@
-<div class="surface" (pointerdown)="contextMenuOpenedThisPress = false" (pointerup)="onSurfaceTap($event)"
-     (contextmenu)="openContextMenu($event)"></div>
+<div class="surface" (pointerdown)="onSurfacePress($event)" (pointermove)="onSurfacePressMove($event)"
+     (pointerup)="onSurfaceTap($event)" (pointercancel)="cancelLongPress()"
+     (contextmenu)="onContextMenu($event)"></div>
 
 @if (contextMenuAt(); as at) {
   <div class="menu context-menu" role="menu" [style.left.px]="at.left" [style.top.px]="at.top">
     <div class="list">
       <button role="menuitem" (click)="copyLink(false)">Copy video URL</button>
       <button role="menuitem" (click)="copyLink(true)">Copy video URL at {{ clockTime(state().currentTime()) }}</button>
+      <button role="menuitemcheckbox" [attr.aria-checked]="state().loop()" (click)="toggleLoop()">
+        <span class="check">{{ state().loop() ? '✓' : '' }}</span>Loop
+      </button>
     </div>
   </div>
 }

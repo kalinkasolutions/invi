@@ -16,6 +16,8 @@
 .surface {
   position: absolute;
   inset: 0;
+  /* iPhones would show their own long-press callout over our menu. */
+  -webkit-touch-callout: none;
 }
 
 .spinner {
@@ -199,6 +201,27 @@ button {
   bottom: auto;
   min-width: 0;
   width: max-content;
+}
+
+.context-menu .list button {
+  display: flex;
+  align-items: center;
+  height: 2.25rem;
+}
+
+.context-menu .list button:hover,
+.context-menu .list button:focus-visible {
+  background: rgb(255 255 255 / .25);
+  outline: none;
+}
+
+.check {
+  width: 1rem;
+  margin-right: .35rem;
+}
+
+.context-menu .list button:not([role='menuitemcheckbox']) {
+  padding-left: 2rem;
 }
 
 .notice {
