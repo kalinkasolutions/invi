@@ -45,5 +45,7 @@ Thumbs.db
 
 # Written by `npm start` from INVIDIOUS_URL.
 /public/config.json
+# Written by `npm start` and `npm run build` from git or the release workflow.
+/public/build-info.json
 # Your own setup next to the example docker-compose.yml.
 /compose.local.yml

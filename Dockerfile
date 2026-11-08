@@ -3,7 +3,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
-RUN npx ng build && rm -f dist/invi/browser/config.json
+# Shown on the About page; the release workflow fills them in.
+ARG INVI_VERSION=unknown
+ARG INVI_COMMIT=
+RUN INVI_VERSION=$INVI_VERSION INVI_COMMIT=$INVI_COMMIT npm run build && rm -f dist/invi/browser/config.json
 
 FROM nginxinc/nginx-unprivileged:1.29-alpine
 USER root

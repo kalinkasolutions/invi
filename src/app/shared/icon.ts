@@ -11,6 +11,7 @@ const paths = {
   playlist: 'M3 6h12M3 12h12M3 18h7M17 14v6l4-3z',
   check: 'M5 12.5l4.5 4.5L19 7',
   chevron: 'M6 9l6 6 6-6',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01',
   logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
   play: 'M7 4.5v15l12-7.5z',
   pause: 'M8 5v14M16 5v14',

@@ -25,6 +25,8 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/amd64 \
+            --build-arg INVI_VERSION=${{ github.ref_name }} \
+            --build-arg INVI_COMMIT=${{ github.sha }} \
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name }} \
             -t ${{ secrets.DOCKER_HUB_USERNAME }}/${{ github.event.repository.name }}:latest \
             --push .

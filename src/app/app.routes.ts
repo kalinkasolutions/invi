@@ -60,6 +60,7 @@ export const routes: Routes = [
     title: 'History – invi',
     loadComponent: () => import('./pages/history-page').then((m) => m.HistoryPage),
   },
+  { path: 'about', title: 'About – invi', loadComponent: () => import('./pages/about-page').then((m) => m.AboutPage) },
   { path: 'auth/callback', loadComponent: () => import('./pages/auth-callback').then((m) => m.AuthCallback) },
   { path: '**', redirectTo: '' },
 ];
