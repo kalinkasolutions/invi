@@ -14,6 +14,8 @@ export interface VideoItem {
   lengthSeconds?: number;
   viewCount?: number;
   viewCountText?: string;
+  /** Unix time in seconds. */
+  published?: number;
   publishedText?: string;
   liveNow?: boolean;
   isUpcoming?: boolean;

@@ -26,8 +26,8 @@ export class SubscriptionsPage {
   private readonly api = inject(InvidiousApi);
   private readonly auth = inject(Auth);
 
-  // Invidious repeats the unseen videos ("notifications") on every page, so they are taken from
-  // page 1 only, and paging follows the plain videos.
+  // Each page is one slice of the feed, split into unseen videos ("notifications") and the rest.
+  // A page of only unseen videos is not the end, so both halves count.
   protected readonly pager = computed(() => {
     if (!this.auth.signedIn()) {
       return null;
@@ -35,12 +35,16 @@ export class SubscriptionsPage {
     return new Pager<VideoItem, number>(
       (page = 1) =>
         this.api.feed(page).pipe(
-          map((feed) => ({
-            items: page === 1 ? [...feed.notifications, ...feed.videos] : feed.videos,
-            next: feed.videos.length ? page + 1 : undefined,
-          })),
+          map((feed) => {
+            const items = [...feed.notifications, ...feed.videos].sort(newestFirst);
+            return { items, next: items.length ? page + 1 : undefined };
+          }),
         ),
       (video) => video.videoId,
     );
   });
+}
+
+function newestFirst(a: VideoItem, b: VideoItem): number {
+  return (b.published ?? 0) - (a.published ?? 0);
 }
