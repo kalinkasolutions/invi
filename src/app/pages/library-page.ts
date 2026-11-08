@@ -22,6 +22,7 @@ import { SignInPrompt } from '../shared/sign-in-prompt';
       </section>
 
       <a class="row-link" routerLink="/feed/history"><app-icon name="history" /> History</a>
+      <a class="row-link" routerLink="/about"><app-icon name="info" /> About invi</a>
 
       <h2>Playlists</h2>
       @if (loadedPlaylists(); as playlists) {
@@ -40,15 +41,15 @@ import { SignInPrompt } from '../shared/sign-in-prompt';
         <a [href]="config.invidiousUrl + '/preferences'">your Invidious server</a>.</p>
     } @else {
       <app-sign-in-prompt reason="Sign in to see your history and playlists." />
+      <a class="row-link about" routerLink="/about"><app-icon name="info" /> About invi</a>
     }
-
-    <a class="row-link about" routerLink="/about"><app-icon name="info" /> About invi</a>
   `,
   styles: `
     .account { display: flex; align-items: center; justify-content: space-between; gap: 1rem;
                flex-wrap: wrap; margin-bottom: 1rem; }
     .row-link { display: flex; align-items: center; gap: .75rem; padding: .9rem 0;
                 border-block: 1px solid var(--border); font-weight: 600; }
+    .row-link + .row-link { border-top: none; }
     .about { margin-top: 2rem; }
     h2 { font-size: 1rem; margin: 1.5rem 0 .75rem; }
     .playlists { display: flex; flex-direction: column; gap: .9rem; }

@@ -28,6 +28,21 @@ main {
   display: none;
 }
 
+/* The negative margin lines the icon up with the page edge, not its padding. */
+.about-link {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  margin-right: -.4rem;
+  padding: .4rem;
+  border-radius: 50%;
+  color: var(--text-muted);
+}
+
+.about-link.active {
+  color: var(--text);
+}
+
 .tab-bar {
   position: fixed;
   inset: auto 0 0 0;
@@ -64,12 +79,14 @@ main {
     display: none;
   }
 
-  /* The negative margin lines the last link's text up with the page edge, not its padding. */
   .wide-nav {
     display: flex;
     gap: .25rem;
     margin-left: auto;
-    margin-right: -.85rem;
+  }
+
+  .about-link {
+    margin-left: 0;
   }
 
   .wide-nav a {
