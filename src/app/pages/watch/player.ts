@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
+  computed,
   Component,
   DestroyRef,
   ElementRef,
@@ -41,7 +42,7 @@ type TextTrack = shakaNamespace.extern.TextTrack;
     @if (problem(); as problem) {
       <p class="problem">{{ problem }}</p>
     } @else if (state(); as state) {
-      <app-player-controls [state]="state" [frames]="frames()" [qualities]="qualities()" [quality]="quality()"
+      <app-player-controls [state]="state" [videoId]="videoId()" [frames]="frames()" [qualities]="qualities()" [quality]="quality()"
                            [captions]="captions()" [caption]="caption()" [fullscreen]="fullscreen()"
                            (qualityChange)="chooseQuality($event)" (captionChange)="chooseCaption($event)"
                            (fullscreenToggle)="toggleFullscreen()" />
@@ -52,6 +53,7 @@ type TextTrack = shakaNamespace.extern.TextTrack;
 export class Player {
   readonly video = input.required<Video>();
   readonly startAt = input(0);
+  protected readonly videoId = computed(() => this.video().videoId);
   readonly ended = output<void>();
 
   private readonly host: HTMLElement = inject(ElementRef).nativeElement;

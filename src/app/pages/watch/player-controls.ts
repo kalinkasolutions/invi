@@ -15,6 +15,7 @@ import {
 import { Icon } from '../../shared/icon';
 import { formatDuration } from '../../shared/format';
 import { jumpSeconds, tapZone, TapZone } from './jumps';
+import { watchLink } from './share-link';
 import { frameAt, StoryboardFrame } from './storyboard';
 import { speeds, VideoState } from './video-state';
 
@@ -36,6 +37,10 @@ const hideAfterMs = 2500;
 const doubleTapMs = 300;
 // Taps this close after a jump, on the same side, jump again and further.
 const jumpSeriesMs = 800;
+const noticeMs = 1500;
+// Roughly the context menu's size, so it opens inside the player even near its edges.
+const contextMenuWidth = 230;
+const contextMenuHeight = 90;
 
 /** The player's own controls: a timeline with preview thumbnails, and the buttons below it. */
 @Component({
@@ -45,12 +50,15 @@ const jumpSeriesMs = 800;
   host: {
     '[class.visible]': 'visible()',
     '(pointermove)': 'onPointerMove($event)',
+    '(document:keydown.escape)': 'closeMenus()',
+    '(document:pointerdown)': 'onPagePointerDown($event)',
   },
   templateUrl: './player-controls.html',
   styleUrl: './player-controls.css',
 })
 export class PlayerControls {
   readonly state = input.required<VideoState>();
+  readonly videoId = input.required<string>();
   readonly frames = input<StoryboardFrame[]>([]);
   readonly qualities = input<number[]>([]);
   readonly quality = input(0);
@@ -64,6 +72,11 @@ export class PlayerControls {
   protected readonly speeds = speeds;
   protected readonly pictureInPicture = 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
   protected readonly menu = signal<Menu>(null);
+  protected readonly contextMenuAt = signal<{ left: number; top: number } | null>(null);
+  protected readonly notice = signal<string | null>(null);
+  protected readonly clockTime = clockTime;
+  // A long press on a phone opens the menu; lifting the finger afterwards must not close it again.
+  protected contextMenuOpenedThisPress = false;
   private readonly shownByUser = signal(true);
   private readonly scrubTime = signal<number | null>(null);
   private readonly hoverTime = signal<number | null>(null);
@@ -76,6 +89,7 @@ export class PlayerControls {
   private tapTimer?: ReturnType<typeof setTimeout>;
   private jumpSeries: { direction: Direction; count: number; at: number } | null = null;
   private jumpShownTimer?: ReturnType<typeof setTimeout>;
+  private noticeTimer?: ReturnType<typeof setTimeout>;
   private jumpId = 0;
   private readonly jumpShown = signal<JumpShown | null>(null);
   // A list of one, so each jump gets a fresh element and its fade starts over.
@@ -90,6 +104,7 @@ export class PlayerControls {
       this.shownByUser() ||
       !this.state().playing() ||
       this.menu() !== null ||
+      this.contextMenuAt() !== null ||
       this.scrubTime() !== null ||
       this.pointerOnBar(),
   );
@@ -124,6 +139,7 @@ export class PlayerControls {
       clearTimeout(this.hideTimer);
       clearTimeout(this.tapTimer);
       clearTimeout(this.jumpShownTimer);
+      clearTimeout(this.noticeTimer);
     });
   }
 
@@ -146,8 +162,11 @@ export class PlayerControls {
    * one follows, so a double tap never pauses the video on the way. Mouse clicks work the same.
    */
   protected onSurfaceTap(event: PointerEvent): void {
-    if (this.menu()) {
-      this.menu.set(null);
+    if (event.button !== 0 || this.contextMenuOpenedThisPress) {
+      return;
+    }
+    if (this.menu() || this.contextMenuAt()) {
+      this.closeMenus();
       return;
     }
     const zone = tapZone(event.offsetX, this.host.clientWidth);
@@ -207,7 +226,42 @@ export class PlayerControls {
   }
 
   protected toggleMenu(menu: Menu): void {
+    this.contextMenuAt.set(null);
     this.menu.set(this.menu() === menu ? null : menu);
+  }
+
+  protected closeMenus(): void {
+    this.menu.set(null);
+    this.contextMenuAt.set(null);
+  }
+
+  protected onPagePointerDown(event: PointerEvent): void {
+    if (!this.host.contains(event.target as Node)) {
+      this.contextMenuAt.set(null);
+    }
+  }
+
+  /** Our own menu in place of the browser's, at the pointer but kept inside the player. */
+  protected openContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    this.contextMenuOpenedThisPress = true;
+    const box = this.host.getBoundingClientRect();
+    this.menu.set(null);
+    this.contextMenuAt.set({
+      left: Math.max(Math.min(event.clientX - box.left, box.width - contextMenuWidth), 0),
+      top: Math.max(Math.min(event.clientY - box.top, box.height - contextMenuHeight), 0),
+    });
+  }
+
+  protected copyLink(atCurrentTime: boolean): void {
+    const seconds = atCurrentTime ? this.state().element.currentTime : 0;
+    navigator.clipboard
+      .writeText(watchLink(location.origin, this.videoId(), seconds))
+      .then(
+        () => this.showNotice('Link copied'),
+        () => this.showNotice('Couldn’t copy the link'),
+      );
+    this.contextMenuAt.set(null);
   }
 
   protected chooseSpeed(speed: number): void {
@@ -265,6 +319,12 @@ export class PlayerControls {
     this.jumpShown.set({ id: ++this.jumpId, direction, text: `${direction > 0 ? '+' : '−'}${seconds}` });
     clearTimeout(this.jumpShownTimer);
     this.jumpShownTimer = setTimeout(() => this.jumpShown.set(null), jumpSeriesMs);
+  }
+
+  private showNotice(text: string): void {
+    this.notice.set(text);
+    clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => this.notice.set(null), noticeMs);
   }
 
   private timeAt(event: PointerEvent): number {

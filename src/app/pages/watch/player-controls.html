@@ -1,4 +1,18 @@
-<div class="surface" (pointerup)="onSurfaceTap($event)"></div>
+<div class="surface" (pointerdown)="contextMenuOpenedThisPress = false" (pointerup)="onSurfaceTap($event)"
+     (contextmenu)="openContextMenu($event)"></div>
+
+@if (contextMenuAt(); as at) {
+  <div class="menu context-menu" role="menu" [style.left.px]="at.left" [style.top.px]="at.top">
+    <div class="list">
+      <button role="menuitem" (click)="copyLink(false)">Copy video URL</button>
+      <button role="menuitem" (click)="copyLink(true)">Copy video URL at {{ clockTime(state().currentTime()) }}</button>
+    </div>
+  </div>
+}
+
+@if (notice(); as notice) {
+  <div class="notice" role="status">{{ notice }}</div>
+}
 
 @for (jump of jumpsShown(); track jump.id) {
   <div class="jump" [class.back]="jump.direction < 0" aria-live="polite">{{ jump.text }}</div>
