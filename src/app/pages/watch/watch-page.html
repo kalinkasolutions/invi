@@ -1,4 +1,4 @@
-@if (video.value(); as video) {
+@if (loadedVideo(); as video) {
   <app-player [video]="video" [startAt]="startAt()" (ended)="playNext()" />
 
   <div class="page">
@@ -49,7 +49,7 @@
     </div>
 
     <aside class="secondary">
-      @if (playlist.value(); as playlist) {
+      @if (loadedPlaylist(); as playlist) {
         <section class="playlist">
           <h2>
             <a routerLink="/playlist" [queryParams]="{ list: playlist.playlistId }">{{
@@ -74,7 +74,10 @@
 } @else if (loadError(); as error) {
   <div class="page">
     <p class="error">{{ error }}</p>
-    <button class="button" (click)="video.reload()">Try again</button>
+    @if (retryingByItself()) {
+      <p class="retrying">Trying again by itself every few seconds…</p>
+    }
+    <button class="button" (click)="video.reload()" [disabled]="video.isLoading()">Try again</button>
   </div>
 } @else {
   <div class="player-placeholder">

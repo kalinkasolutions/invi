@@ -3,6 +3,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { InvidiousApi } from '../api/invidious-api';
 import { ItemList } from '../shared/item-list';
+import { loadedValue } from '../shared/loaded-value';
 import { errorMessage } from '../shared/pager';
 
 type HomeTab = 'trending' | 'popular';
@@ -16,7 +17,7 @@ type HomeTab = 'trending' | 'popular';
       <a routerLink="/feed/trending" [class.active]="activeTab() === 'trending'">Trending</a>
       <a routerLink="/feed/trending" [queryParams]="{ tab: 'popular' }" [class.active]="activeTab() === 'popular'">Popular here</a>
     </nav>
-    @if (videos.value(); as videos) {
+    @if (loadedVideos(); as videos) {
       <app-item-list [items]="videos" />
     } @else if (videos.error()) {
       <p class="empty">{{ error() }}</p>
@@ -34,5 +35,6 @@ export class HomePage {
     params: () => this.activeTab(),
     stream: ({ params }) => (params === 'popular' ? this.api.popular() : this.api.trending()),
   });
+  protected readonly loadedVideos = computed(() => loadedValue(this.videos));
   protected readonly error = computed(() => errorMessage(this.videos.error()?.cause));
 }

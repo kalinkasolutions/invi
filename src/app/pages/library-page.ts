@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { finalize, of } from 'rxjs';
@@ -7,6 +7,7 @@ import { AppConfig } from '../core/app-config';
 import { Auth } from '../core/auth';
 import { Icon } from '../shared/icon';
 import { PlaylistCard } from '../shared/item-list';
+import { loadedValue } from '../shared/loaded-value';
 import { SignInPrompt } from '../shared/sign-in-prompt';
 
 @Component({
@@ -23,7 +24,7 @@ import { SignInPrompt } from '../shared/sign-in-prompt';
       <a class="row-link" routerLink="/feed/history"><app-icon name="history" /> History</a>
 
       <h2>Playlists</h2>
-      @if (playlists.value(); as playlists) {
+      @if (loadedPlaylists(); as playlists) {
         <div class="playlists">
           @for (playlist of playlists; track playlist.playlistId) {
             <app-playlist-card [playlist]="playlist" />
@@ -64,6 +65,7 @@ export class LibraryPage {
     params: () => this.auth.signedIn(),
     stream: ({ params: signedIn }) => (signedIn ? this.api.myPlaylists() : of([])),
   });
+  protected readonly loadedPlaylists = computed(() => loadedValue(this.playlists));
 
   protected signOut(): void {
     this.api

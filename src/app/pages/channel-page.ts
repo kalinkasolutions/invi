@@ -10,6 +10,7 @@ import { Avatar } from '../shared/avatar';
 import { formatCount } from '../shared/format';
 import { ItemList } from '../shared/item-list';
 import { ListStatus } from '../shared/list-status';
+import { loadedValue } from '../shared/loaded-value';
 import { errorMessage, Page, Pager } from '../shared/pager';
 import { SubscribeButton } from '../shared/subscribe-button';
 
@@ -26,7 +27,7 @@ const tabLabels: Record<ChannelTab, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, Avatar, ItemList, ListStatus, SubscribeButton],
   template: `
-    @if (channel.value(); as channel) {
+    @if (loadedChannel(); as channel) {
       @if (banner() && !bannerFailed()) {
         <img class="banner" [src]="banner()" alt="" (error)="bannerFailed.set(true)" />
       }
@@ -75,20 +76,21 @@ export class ChannelPage {
     params: () => this.id(),
     stream: ({ params }) => this.channelFor(params),
   });
+  protected readonly loadedChannel = computed(() => loadedValue(this.channel));
   protected readonly error = computed(() => errorMessage(this.channel.error()?.cause));
-  protected readonly banner = computed(() => largestImage(this.channel.value()?.authorBanners));
+  protected readonly banner = computed(() => largestImage(this.loadedChannel()?.authorBanners));
   protected readonly bannerFailed = linkedSignal({ source: this.banner, computation: () => false });
-  protected readonly avatar = computed(() => largestImage(this.channel.value()?.authorThumbnails));
-  protected readonly subscribers = computed(() => `${formatCount(this.channel.value()?.subCount)} subscribers`);
+  protected readonly avatar = computed(() => largestImage(this.loadedChannel()?.authorThumbnails));
+  protected readonly subscribers = computed(() => `${formatCount(this.loadedChannel()?.subCount)} subscribers`);
 
   protected readonly tabs = computed(() => {
-    const offered = this.channel.value()?.tabs ?? [];
+    const offered = this.loadedChannel()?.tabs ?? [];
     return (Object.keys(tabLabels) as ChannelTab[]).filter((tab) => offered.includes(tab));
   });
   protected readonly activeTab = computed(() => this.tab() ?? this.tabs()[0] ?? 'videos');
 
   protected readonly pager = computed(() => {
-    const channelId = this.channel.value()?.authorId;
+    const channelId = this.loadedChannel()?.authorId;
     if (!channelId) {
       return null;
     }
@@ -98,7 +100,7 @@ export class ChannelPage {
 
   constructor() {
     const title = inject(Title);
-    effect(() => title.setTitle(`${this.channel.value()?.author ?? 'Channel'} – invi`));
+    effect(() => title.setTitle(`${this.loadedChannel()?.author ?? 'Channel'} – invi`));
   }
 
   private channelFor(idOrHandle: string): Observable<Channel> {
