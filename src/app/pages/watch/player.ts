@@ -334,10 +334,17 @@ export class Player {
     if (isCancelled() || this.player !== player) {
       return;
     }
+    // The player keeps buffering while paused, so this can run when you paused on purpose.
+    const wasPaused = element.paused;
     this.reloading = true;
     try {
       await this.load(player, video, resumeAt, this.quality());
-      element.play().catch(() => undefined);
+      // pause() also stops the autoplay attribute from starting the new source.
+      if (wasPaused) {
+        element.pause();
+      } else {
+        element.play().catch(() => undefined);
+      }
     } catch (reloadError) {
       this.recover(player, video, reloadError as { severity: number }, isCancelled);
     } finally {
