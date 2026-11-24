@@ -20,6 +20,25 @@
   -webkit-touch-callout: none;
 }
 
+/* Faint lines where a double click switches from jumping back, to full screen, to jumping forward. */
+.surface::before {
+  content: '';
+  position: absolute;
+  inset: 12% calc(100% / 3) 22%;
+  /* A light line with a dark edge shows on bright and dark frames alike. */
+  border-inline: 1px solid rgb(255 255 255 / .15);
+  box-shadow: inset 1px 0 rgb(0 0 0 / .08), 1px 0 rgb(0 0 0 / .08);
+  mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent);
+  opacity: 0;
+  transition: opacity .2s;
+}
+
+@media (hover: hover) {
+  :host(.visible:hover) .surface::before {
+    opacity: 1;
+  }
+}
+
 .spinner {
   position: absolute;
   top: 50%;
