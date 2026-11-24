@@ -17,7 +17,7 @@ import type shakaNamespace from 'shaka-player/dist/shaka-player.compiled-es2021'
 import { videoThumbnail } from '../../api/private-urls';
 import { Video } from '../../api/types';
 import { positionToKeep, WatchPositions } from '../../core/watch-positions';
-import { originalAudioTrack } from './audio-tracks';
+import { originalAudioTrack, withoutDubs } from './audio-tracks';
 import { CaptionChoice, PlayerControls } from './player-controls';
 import { autoQuality, closestQuality, qualitiesOf, savedQuality, saveQuality, variantWithQuality } from './quality';
 import { parseStoryboard, StoryboardFrame } from './storyboard';
@@ -273,6 +273,13 @@ export class Player {
         preferredAudio: [{ role: 'main' }],
         preferredDecodingAttributes: ['smooth', 'powerEfficient'],
       });
+      if (!video.hlsUrl) {
+        player.getNetworkingEngine()?.registerResponseFilter((type, response) => {
+          if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST) {
+            response.data = new TextEncoder().encode(withoutDubs(new TextDecoder().decode(response.data)));
+          }
+        });
+      }
       player.addEventListener('error', (event) =>
         this.recover(player, video, (event as unknown as { detail: { severity: number } }).detail, isCancelled),
       );
